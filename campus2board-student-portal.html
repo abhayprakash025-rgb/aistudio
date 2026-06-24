@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Campus2Board · Student Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', 'Segoe UI', sans-serif; background: #F8F9FC; color: #1E1E1E; }
+    input:focus { outline: none; border-color: #4B0082 !important; box-shadow: 0 0 0 3px rgba(75,0,130,0.12); }
+    button:hover { filter: brightness(1.05); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-in { animation: fadeIn 0.4s ease forwards; }
+    .module-card { transition: transform 0.2s, box-shadow 0.2s; }
+    .module-card:hover.live { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(75,0,130,0.15) !important; }
+    .spinner { width: 28px; height: 28px; border: 3px solid rgba(255,255,255,0.3); border-top-color: #F59E0B; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #F8F9FC; } ::-webkit-scrollbar-thumb { background: #7F6BB3; border-radius: 3px; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+const { useState, useEffect, useRef } = React;
+const { createClient } = supabase;
+
+// ─── Config ────────────────────────────────────────────────────────────────────
+const SUPABASE_URL = "https://yhycjpsbuiidboadvchp.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InloeWNqcHNidWlpZGJvYWR2Y2hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMjMxMTUsImV4cCI6MjA5Nzc5OTExNX0.9l639s3cddDx9nHWeAr533yJ996rM4tqSQU8iUrPUWg";
+const CAREER_DISCOVERY_URL = "https://campus2board-v2-career-intelligence-platform-561715786352.asia-southeast1.run.app";
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ─── Palette ───────────────────────────────────────────────────────────────────
+const C = {
+  purple: "#4B0082", purpleLight: "#6A0DAD", gold: "#F59E0B", goldLight: "#FCD34D",
+  lavender: "#7F6BB3", lavenderBg: "#F3F0FA", charcoal: "#1E1E1E",
+  white: "#FFFFFF", bgSec: "#F8F9FC", border: "#E8E4F0",
+  success: "#10B981", error: "#EF4444", muted: "#6B7280",
+};
+
+// ─── SVG Icons ─────────────────────────────────────────────────────────────────
+const Icons = {
+  compass: () => React.createElement("svg", {width:22,height:22,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},
+    React.createElement("circle",{cx:12,cy:12,r:10}),React.createElement("polygon",{points:"16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"})),
+  file: () => React.createElement("svg", {width:22,height:22,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},
+    React.createElement("path",{d:"M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"}),
+    React.createElement("polyline",{points:"14 2 14 8 20 8"}),React.createElement("line",{x1:16,y1:13,x2:8,y2:13}),React.createElement("line",{x1:16,y1:17,x2:8,y2:17})),
+  mic: () => React.createElement("svg", {width:22,height:22,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},
+    React.createElement("path",{d:"M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"}),
+    React.createElement("path",{d:"M19 10v2a7 7 0 0 1-14 0v-2"}),React.createElement("line",{x1:12,y1:19,x2:12,y2:23}),React.createElement("line",{x1:8,y1:23,x2:16,y2:23})),
+  grid: () => React.createElement("svg", {width:22,height:22,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},
+    React.createElement("rect",{x:3,y:3,width:7,height:7}),React.createElement("rect",{x:14,y:3,width:7,height:7}),
+    React.createElement("rect",{x:14,y:14,width:7,height:7}),React.createElement("rect",{x:3,y:14,width:7,height:7})),
+  briefcase: () => React.createElement("svg", {width:22,height:22,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},
+    React.createElement("rect",{x:2,y:7,width:20,height:14,rx:2,ry:2}),React.createElement("path",{d:"M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"})),
+  user: () => React.createElement("svg", {width:16,height:16,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},
+    React.createElement("path",{d:"M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"}),React.createElement("circle",{cx:12,cy:7,r:4})),
+  lock: () => React.createElement("svg", {width:16,height:16,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},
+    React.createElement("rect",{x:3,y:11,width:18,height:11,rx:2,ry:2}),React.createElement("path",{d:"M7 11V7a5 5 0 0 1 10 0v4"})),
+  mail: () => React.createElement("svg", {width:16,height:16,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},
+    React.createElement("path",{d:"M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"}),
+    React.createElement("polyline",{points:"22,6 12,13 2,6"})),
+  eye: () => React.createElement("svg", {width:16,height:16,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},
+    React.createElement("path",{d:"M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"}),React.createElement("circle",{cx:12,cy:12,r:3})),
+  eyeOff: () => React.createElement("svg", {width:16,height:16,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},
+    React.createElement("path",{d:"M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"}),
+    React.createElement("path",{d:"M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"}),
+    React.createElement("line",{x1:1,y1:1,x2:23,y2:23})),
+  logout: () => React.createElement("svg", {width:16,height:16,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},
+    React.createElement("path",{d:"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"}),
+    React.createElement("polyline",{points:"16 17 21 12 16 7"}),React.createElement("line",{x1:21,y1:12,x2:9,y2:12})),
+  star: () => React.createElement("svg", {width:12,height:12,fill:C.gold,stroke:C.gold,strokeWidth:2,viewBox:"0 0 24 24"},
+    React.createElement("polygon",{points:"12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"})),
+  chevron: () => React.createElement("svg", {width:14,height:14,fill:"none",stroke:"currentColor",strokeWidth:2.5,viewBox:"0 0 24 24"},
+    React.createElement("polyline",{points:"9 18 15 12 9 6"})),
+  building: () => React.createElement("svg", {width:16,height:16,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},
+    React.createElement("path",{d:"M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"}),
+    React.createElement("polyline",{points:"9 22 9 12 15 12 15 22"})),
+};
+
+// ─── Module Config ──────────────────────────────────────────────────────────────
+const MODULES = [
+  { id:"career-discovery", num:"01", title:"Career Discovery", sub:"AI-powered career intelligence",
+    desc:"Complete a personalised AI interview and workplace simulations. Receive your Career Blueprint with role recommendations and a 12-month action roadmap.", 
+    icon:"compass", color:"#4B0082", accent:"#7F6BB3", cta:"Begin Discovery", badge:"Core Module", badgeColor:C.purple, live:true },
+  { id:"resume-builder", num:"02", title:"AI Resume Builder", sub:"ATS score & optimisation",
+    desc:"Upload your CV and receive an instant ATS compatibility score against your target role, a rewritten summary, and specific gap-closing suggestions.",
+    icon:"file", color:"#1D6A45", accent:"#A7F3D0", cta:"Upload CV", badge:"Coming Soon", badgeColor:C.muted, live:false },
+  { id:"interview-training", num:"03", title:"AI Interview Training", sub:"Role-specific mock interviews",
+    desc:"Practice unlimited mock interviews for your target role. Get structured feedback on content, delivery, and role-specific communication after every session.",
+    icon:"mic", color:"#1E40AF", accent:"#BFDBFE", cta:"Start Practice", badge:"Coming Soon", badgeColor:C.muted, live:false },
+  { id:"workplace-simulation", num:"04", title:"Workplace Simulation", sub:"Real business case challenges",
+    desc:"Solve live business problems across Finance, Marketing, Operations, and Analytics. Assessed against actual corporate performance benchmarks.",
+    icon:"grid", color:"#92400E", accent:"#FDE68A", cta:"Run Simulation", badge:"In Discovery", badgeColor:C.gold, live:false },
+  { id:"opportunities", num:"05", title:"Explore Opportunities", sub:"Jobs · Internships · Live Projects",
+    desc:"Browse verified opportunities from recruiters matched to your Career Blueprint score. Apply with one click using your validated profile.",
+    icon:"briefcase", color:"#5B21B6", accent:"#DDD6FE", cta:"Browse Openings", badge:"Coming Soon", badgeColor:C.muted, live:false },
+];
+
+// ─── Auth Screen ────────────────────────────────────────────────────────────────
+function AuthScreen({ onAuth }) {
+  const [mode, setMode] = useState("login");
+  const [email, setEmail] = useState(""); const [pass, setPass] = useState("");
+  const [name, setName] = useState(""); const [college, setCollege] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(""); const [success, setSuccess] = useState("");
+
+  const submit = async () => {
+    setError(""); setSuccess("");
+    if (!email || !pass) return setError("Email and password are required.");
+    if (mode === "signup" && !name.trim()) return setError("Please enter your full name.");
+    if (pass.length < 6) return setError("Password must be at least 6 characters.");
+    setLoading(true);
+    try {
+      if (mode === "login") {
+        const { data, error: e } = await sb.auth.signInWithPassword({ email, password: pass });
+        if (e) throw e;
+        onAuth(data.user);
+      } else {
+        const { data, error: e } = await sb.auth.signUp({ email, password: pass, options: { data: { name, college } } });
+        if (e) throw e;
+        if (data.user) {
+          await sb.from("students").upsert({ id: data.user.id, name, email, college_name: college, created_at: new Date().toISOString() });
+          setSuccess("Account created! Please sign in.");
+          setMode("login"); setEmail(""); setPass("");
+        }
+      }
+    } catch(e) { setError(e.message || "Something went wrong."); }
+    setLoading(false);
+  };
+
+  const e = React.createElement;
+  return e("div", { style: { minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center",
+    background:`linear-gradient(135deg, ${C.purple} 0%, #2D0052 55%, #1E1E1E 100%)`, position:"relative", overflow:"hidden" } },
+    // Decorative blobs
+    e("div", { style: { position:"absolute", top:-120, right:-80, width:380, height:380, borderRadius:"50%", background:"rgba(245,158,11,0.07)", filter:"blur(70px)" } }),
+    e("div", { style: { position:"absolute", bottom:-80, left:-80, width:320, height:320, borderRadius:"50%", background:"rgba(127,107,179,0.1)", filter:"blur(60px)" } }),
+    e("div", { className:"fade-in", style: { width:"100%", maxWidth:440, padding:"0 20px", position:"relative", zIndex:1 } },
+      // Logo
+      e("div", { style: { textAlign:"center", marginBottom:36 } },
+        e("div", { style: { display:"inline-flex", alignItems:"center", gap:14, marginBottom:12 } },
+          e("div", { style: { width:52, height:52, background:C.gold, borderRadius:14, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:900, fontSize:24, color:C.purple } }, "C"),
+          e("div", { style: { textAlign:"left" } },
+            e("div", { style: { color:C.white, fontWeight:800, fontSize:24, letterSpacing:"-0.5px" } }, "Campus2Board"),
+            e("div", { style: { color:C.lavender, fontSize:11, fontWeight:600, letterSpacing:"1.5px", textTransform:"uppercase" } }, "Student Portal")
+          )
+        ),
+        e("p", { style: { color:"rgba(255,255,255,0.5)", fontSize:14, margin:0 } }, "Your MBA career readiness platform")
+      ),
+      // Card
+      e("div", { style: { background:C.white, borderRadius:20, padding:36, boxShadow:"0 32px 80px rgba(0,0,0,0.4)" } },
+        // Tabs
+        e("div", { style: { display:"flex", background:C.bgSec, borderRadius:12, padding:4, marginBottom:28, gap:4 } },
+          ["login","signup"].map(m => e("button", { key:m, onClick:() => { setMode(m); setError(""); setSuccess(""); },
+            style: { flex:1, padding:"10px 0", borderRadius:9, border:"none", fontSize:14, fontWeight:600, cursor:"pointer",
+              transition:"all 0.2s", background:mode===m ? C.purple : "transparent", color:mode===m ? C.white : C.muted } },
+            m === "login" ? "Sign In" : "Create Account"))
+        ),
+        // Fields
+        e("div", { style: { display:"flex", flexDirection:"column", gap:16 } },
+          mode === "signup" && e("div", null,
+            e("label", { style: { fontSize:13, fontWeight:600, color:C.charcoal, marginBottom:6, display:"block" } }, "Full Name"),
+            e("div", { style: { position:"relative" } },
+              e("span", { style: { position:"absolute", left:13, top:"50%", transform:"translateY(-50%)", color:C.muted } }, e(Icons.user)),
+              e("input", { style: { width:"100%", padding:"12px 16px 12px 40px", border:`1.5px solid ${C.border}`, borderRadius:10, fontSize:15, color:C.charcoal, background:C.white },
+                placeholder:"Aryan Sharma", value:name, onChange:ev => setName(ev.target.value) })
+            )
+          ),
+          mode === "signup" && e("div", null,
+            e("label", { style: { fontSize:13, fontWeight:600, color:C.charcoal, marginBottom:6, display:"block" } }, "College / University"),
+            e("div", { style: { position:"relative" } },
+              e("span", { style: { position:"absolute", left:13, top:"50%", transform:"translateY(-50%)", color:C.muted } }, e(Icons.building)),
+              e("input", { style: { width:"100%", padding:"12px 16px 12px 40px", border:`1.5px solid ${C.border}`, borderRadius:10, fontSize:15, color:C.charcoal, background:C.white },
+                placeholder:"IIM Ahmedabad, XLRI, etc.", value:college, onChange:ev => setCollege(ev.target.value) })
+            )
+          ),
+          e("div", null,
+            e("label", { style: { fontSize:13, fontWeight:600, color:C.charcoal, marginBottom:6, display:"block" } }, "Email Address"),
+            e("div", { style: { position:"relative" } },
+              e("span", { style: { position:"absolute", left:13, top:"50%", transform:"translateY(-50%)", color:C.muted } }, e(Icons.mail)),
+              e("input", { type:"email", style: { width:"100%", padding:"12px 16px 12px 40px", border:`1.5px solid ${C.border}`, borderRadius:10, fontSize:15, color:C.charcoal, background:C.white },
+                placeholder:"you@college.edu", value:email, onChange:ev => setEmail(ev.target.value), onKeyDown:ev => ev.key==="Enter" && submit() })
+            )
+          ),
+          e("div", null,
+            e("label", { style: { fontSize:13, fontWeight:600, color:C.charcoal, marginBottom:6, display:"block" } }, "Password"),
+            e("div", { style: { position:"relative" } },
+              e("span", { style: { position:"absolute", left:13, top:"50%", transform:"translateY(-50%)", color:C.muted } }, e(Icons.lock)),
+              e("input", { type:showPass ? "text" : "password", style: { width:"100%", padding:"12px 44px 12px 40px", border:`1.5px solid ${C.border}`, borderRadius:10, fontSize:15, color:C.charcoal, background:C.white },
+                placeholder:"••••••••", value:pass, onChange:ev => setPass(ev.target.value), onKeyDown:ev => ev.key==="Enter" && submit() }),
+              e("button", { onClick:() => setShowPass(!showPass), style: { position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:C.muted, padding:2 } },
+                e(showPass ? Icons.eyeOff : Icons.eye))
+            )
+          ),
+          error && e("div", { style: { background:"#FEF2F2", border:`1px solid #FECACA`, borderRadius:8, padding:"10px 14px", color:C.error, fontSize:13, fontWeight:500 } }, error),
+          success && e("div", { style: { background:"#ECFDF5", border:`1px solid #A7F3D0`, borderRadius:8, padding:"10px 14px", color:C.success, fontSize:13, fontWeight:500 } }, success),
+          e("button", { onClick:submit, disabled:loading,
+            style: { background:C.purple, color:C.white, border:"none", borderRadius:10, padding:"14px 24px", fontWeight:700, fontSize:15, cursor:loading?"not-allowed":"pointer",
+              width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:10, opacity:loading?0.75:1, marginTop:4 } },
+            loading ? e("div", { className:"spinner" }) : (mode==="login" ? "Sign In to Portal" : "Create My Account")
+          )
+        )
+      ),
+      e("p", { style: { textAlign:"center", color:"rgba(255,255,255,0.3)", fontSize:12, marginTop:20 } }, "Campus2Board · MBA Career Readiness Platform")
+    )
+  );
+}
+
+// ─── Dashboard ──────────────────────────────────────────────────────────────────
+function Dashboard({ user, onLogout }) {
+  const [blueprint, setBlueprint] = useState(null);
+  const [loadingData, setLoadingData] = useState(true);
+  const e = React.createElement;
+
+  const displayName = (user.user_metadata?.name || user.email?.split("@")[0] || "Student");
+  const firstName = displayName.split(" ")[0];
+  const college = user.user_metadata?.college || "";
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const { data } = await sb.from("career_blueprints").select("*").eq("student_id", user.id).order("created_at", { ascending:false }).limit(1).maybeSingle();
+        setBlueprint(data);
+      } catch(err) {}
+      setLoadingData(false);
+    };
+    load();
+  }, [user.id]);
+
+  const goToDiscovery = () => {
+    const p = new URLSearchParams({ name:displayName, email:user.email||"", college, student_id:user.id });
+    window.open(`${CAREER_DISCOVERY_URL}?${p.toString()}`, "_blank");
+  };
+
+  const hasBlueprint = !!blueprint;
+  const fitScore = blueprint?.recommendation_confidence || (blueprint?.report_data?.recommendationConfidence) || 0;
+  const topMatches = blueprint?.report_data?.topCareerMatches || [];
+
+  const progressSteps = [
+    { label:"Profile Created", done:true },
+    { label:"Career Discovery", done:hasBlueprint },
+    { label:"CV Uploaded", done:false },
+    { label:"Interview Training", done:false },
+    { label:"Applied to Role", done:false },
+  ];
+  const progressPct = Math.round((progressSteps.filter(s=>s.done).length / progressSteps.length) * 100);
+
+  return e("div", { style: { minHeight:"100vh", background:C.bgSec } },
+    // Navbar
+    e("nav", { style: { background:C.purple, padding:"0 28px", height:64, display:"flex", alignItems:"center", justifyContent:"space-between",
+      position:"sticky", top:0, zIndex:100, boxShadow:"0 2px 20px rgba(75,0,130,0.35)" } },
+      e("div", { style: { display:"flex", alignItems:"center", gap:12 } },
+        e("div", { style: { width:38, height:38, background:C.gold, borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:900, fontSize:20, color:C.purple } }, "C"),
+        e("div", null,
+          e("div", { style: { color:C.white, fontWeight:800, fontSize:17, letterSpacing:"-0.3px" } }, "Campus2Board"),
+          e("div", { style: { color:C.lavender, fontSize:10, fontWeight:600, letterSpacing:"1px", textTransform:"uppercase" } }, "Student Portal")
+        )
+      ),
+      e("div", { style: { display:"flex", alignItems:"center", gap:16 } },
+        e("div", { style: { textAlign:"right" } },
+          e("div", { style: { color:C.white, fontSize:14, fontWeight:600 } }, displayName),
+          college && e("div", { style: { color:C.lavender, fontSize:11 } }, college)
+        ),
+        e("button", { onClick:onLogout, style: { background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:8,
+          padding:"7px 14px", color:C.white, cursor:"pointer", display:"flex", alignItems:"center", gap:7, fontSize:13, fontWeight:500 } },
+          e(Icons.logout), "Sign Out"
+        )
+      )
+    ),
+
+    e("div", { style: { maxWidth:1120, margin:"0 auto", padding:"36px 24px" } },
+
+      // ── Hero Banner ─────────────────────────────────────────────────────────
+      e("div", { className:"fade-in", style: { background:`linear-gradient(135deg, ${C.purple} 0%, ${C.purpleLight} 60%, #5B21B6 100%)`,
+        borderRadius:24, padding:"36px 40px", marginBottom:36, position:"relative", overflow:"hidden" } },
+        e("div", { style: { position:"absolute", top:-60, right:-60, width:280, height:280, borderRadius:"50%", background:"rgba(245,158,11,0.1)" } }),
+        e("div", { style: { position:"absolute", bottom:-80, right:140, width:200, height:200, borderRadius:"50%", background:"rgba(127,107,179,0.15)" } }),
+        e("div", { style: { position:"relative", zIndex:1 } },
+          e("div", { style: { display:"flex", alignItems:"flex-start", justifyContent:"space-between", flexWrap:"wrap", gap:24 } },
+            e("div", null,
+              e("p", { style: { color:C.gold, fontSize:12, fontWeight:700, letterSpacing:"1.5px", textTransform:"uppercase", margin:"0 0 10px" } }, "Welcome back"),
+              e("h1", { style: { color:C.white, fontSize:26, fontWeight:900, margin:"0 0 10px", letterSpacing:"-0.5px", lineHeight:1.2 } },
+                `${firstName}, build your career with confidence.`
+              ),
+              e("p", { style: { color:"rgba(255,255,255,0.6)", fontSize:14, margin:0, maxWidth:460, lineHeight:1.6 } },
+                hasBlueprint
+                  ? "Your Career Blueprint is ready. Continue building your profile to unlock all 5 modules."
+                  : "Start with Career Discovery — a 15-minute AI assessment that maps your strengths to the right MBA roles."
+              )
+            ),
+            hasBlueprint && fitScore > 0 && e("div", { style: { background:"rgba(255,255,255,0.1)", backdropFilter:"blur(12px)",
+              borderRadius:18, padding:"22px 32px", textAlign:"center", border:"1px solid rgba(255,255,255,0.15)", flexShrink:0 } },
+              e("div", { style: { color:C.gold, fontSize:42, fontWeight:900, lineHeight:1, fontFamily:"monospace" } }, fitScore + "%"),
+              e("div", { style: { color:"rgba(255,255,255,0.6)", fontSize:11, fontWeight:700, marginTop:5, letterSpacing:"0.8px", textTransform:"uppercase" } }, "Career Fit Score")
+            )
+          ),
+
+          // Progress
+          e("div", { style: { marginTop:28 } },
+            e("div", { style: { display:"flex", justifyContent:"space-between", marginBottom:7 } },
+              e("span", { style: { color:"rgba(255,255,255,0.55)", fontSize:11, fontWeight:700, letterSpacing:"0.8px", textTransform:"uppercase" } }, "Profile Completion"),
+              e("span", { style: { color:C.gold, fontSize:12, fontWeight:800 } }, `${progressPct}%`)
+            ),
+            e("div", { style: { background:"rgba(255,255,255,0.12)", borderRadius:100, height:8, overflow:"hidden" } },
+              e("div", { style: { background:`linear-gradient(90deg, ${C.gold}, ${C.goldLight})`, height:"100%", width:`${progressPct}%`, borderRadius:100, transition:"width 1.2s ease" } })
+            ),
+            e("div", { style: { display:"flex", gap:20, marginTop:12, flexWrap:"wrap" } },
+              progressSteps.map((s,i) => e("div", { key:i, style: { display:"flex", alignItems:"center", gap:6,
+                color:s.done ? C.gold : "rgba(255,255,255,0.35)", fontSize:11, fontWeight:600 } },
+                e("div", { style: { width:16, height:16, borderRadius:"50%", background:s.done ? C.gold : "rgba(255,255,255,0.15)",
+                  display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, color:s.done ? C.purple : "transparent", fontWeight:900 } }, s.done ? "✓" : ""),
+                s.label
+              ))
+            )
+          )
+        )
+      ),
+
+      // ── Blueprint Preview ──────────────────────────────────────────────────
+      hasBlueprint && topMatches.length > 0 && e("div", { className:"fade-in",
+        style: { background:C.white, borderRadius:18, border:`1px solid ${C.border}`, padding:28,
+          marginBottom:32, borderLeft:`5px solid ${C.gold}`, boxShadow:"0 2px 12px rgba(75,0,130,0.06)" } },
+        e("div", { style: { display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20, flexWrap:"wrap", gap:12 } },
+          e("div", null,
+            e("h3", { style: { margin:0, fontSize:17, fontWeight:800, color:C.charcoal } }, "Your Career Blueprint"),
+            e("p", { style: { margin:"4px 0 0", fontSize:13, color:C.muted } },
+              `Generated ${new Date(blueprint.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})}`
+            )
+          ),
+          e("button", { onClick:goToDiscovery, style: { background:"transparent", color:C.purple, border:`2px solid ${C.purple}`,
+            borderRadius:10, padding:"9px 18px", fontWeight:600, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", gap:6 } },
+            "View Full Report ", e(Icons.chevron))
+        ),
+        e("div", { style: { display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))", gap:14 } },
+          topMatches.slice(0,3).map((m,i) => e("div", { key:i,
+            style: { background:C.lavenderBg, borderRadius:12, padding:"16px 18px", border:`1px solid ${C.border}` } },
+            e("div", { style: { display:"flex", alignItems:"center", gap:5, marginBottom:6 } },
+              e(Icons.star), e("span", { style: { fontSize:10, fontWeight:700, color:C.purple, textTransform:"uppercase", letterSpacing:"0.5px" } }, m.domain)
+            ),
+            e("div", { style: { fontSize:14, fontWeight:700, color:C.charcoal, marginBottom:4 } }, m.roleTitle),
+            e("div", { style: { fontSize:24, fontWeight:900, color:C.purple, fontFamily:"monospace" } }, `${m.careerFitScore}%`),
+            e("div", { style: { fontSize:11, color:C.muted, marginTop:2 } }, "Career Fit")
+          ))
+        )
+      ),
+
+      // ── Module Cards ────────────────────────────────────────────────────────
+      e("h2", { style: { fontSize:20, fontWeight:800, color:C.charcoal, margin:"0 0 20px", letterSpacing:"-0.3px" } }, "Your Learning Modules"),
+      e("div", { style: { display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(310px, 1fr))", gap:20 } },
+        MODULES.map(mod => {
+          const ModIcon = Icons[mod.icon];
+          return e("div", { key:mod.id, className:`module-card ${mod.live ? "live" : ""}`,
+            onClick:() => mod.live && goToDiscovery(),
+            style: { background:C.white, borderRadius:18, border:`1px solid ${C.border}`, padding:28,
+              cursor:mod.live ? "pointer" : "default", position:"relative", overflow:"hidden",
+              boxShadow:"0 2px 8px rgba(75,0,130,0.05)", opacity:mod.live ? 1 : 0.82 } },
+            // Top accent
+            e("div", { style: { position:"absolute", top:0, left:0, right:0, height:4,
+              background:mod.live ? `linear-gradient(90deg, ${mod.color}, ${mod.accent})` : C.border, borderRadius:"18px 18px 0 0" } }),
+            // Header
+            e("div", { style: { display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:18, paddingTop:6 } },
+              e("div", { style: { display:"flex", alignItems:"center", gap:12 } },
+                e("div", { style: { width:46, height:46, borderRadius:13, background:`${mod.color}12`,
+                  display:"flex", alignItems:"center", justifyContent:"center", color:mod.color } }, e(ModIcon)),
+                e("span", { style: { fontSize:30, fontWeight:900, color:`${mod.color}18`, fontFamily:"monospace", lineHeight:1 } }, mod.num)
+              ),
+              e("span", { style: { display:"inline-flex", alignItems:"center", background:`${mod.badgeColor}14`,
+                color:mod.badgeColor, borderRadius:20, padding:"4px 12px", fontSize:11, fontWeight:700, letterSpacing:"0.3px" } }, mod.badge)
+            ),
+            e("h3", { style: { margin:"0 0 4px", fontSize:16, fontWeight:800, color:C.charcoal, letterSpacing:"-0.2px" } }, mod.title),
+            e("p", { style: { margin:"0 0 12px", fontSize:11, fontWeight:700, color:mod.color, textTransform:"uppercase", letterSpacing:"0.6px" } }, mod.sub),
+            e("p", { style: { margin:"0 0 22px", fontSize:13.5, color:C.muted, lineHeight:1.65 } }, mod.desc),
+            e("button", { onClick:ev => { ev.stopPropagation(); mod.live && goToDiscovery(); }, disabled:!mod.live,
+              style: { background:mod.live ? C.purple : C.border, color:mod.live ? C.white : C.muted, border:"none",
+                borderRadius:10, padding:"11px 20px", fontWeight:600, fontSize:13, cursor:mod.live ? "pointer" : "not-allowed",
+                width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:8 } },
+              mod.live ? [mod.cta, e(Icons.chevron)] : "Coming Soon"
+            )
+          );
+        })
+      ),
+
+      // Footer
+      e("div", { style: { textAlign:"center", marginTop:52, paddingBottom:24 } },
+        e("p", { style: { color:C.muted, fontSize:13 } },
+          "Campus2Board · MBA Career Readiness Platform · ",
+          e("span", { style: { color:C.purple, fontWeight:700 } }, "app.campus2board.com")
+        )
+      )
+    )
+  );
+}
+
+// ─── Root ───────────────────────────────────────────────────────────────────────
+function App() {
+  const [user, setUser] = useState(null);
+  const [checking, setChecking] = useState(true);
+  const e = React.createElement;
+
+  useEffect(() => {
+    sb.auth.getSession().then(({ data:{ session } }) => { setUser(session?.user ?? null); setChecking(false); });
+    const { data:{ subscription } } = sb.auth.onAuthStateChange((_ev, session) => setUser(session?.user ?? null));
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (checking) return e("div", { style: { minHeight:"100vh", background:C.purple, display:"flex", alignItems:"center", justifyContent:"center" } },
+    e("div", { style: { textAlign:"center" } },
+      e("div", { style: { width:52, height:52, background:C.gold, borderRadius:14, display:"flex", alignItems:"center", justifyContent:"center",
+        fontWeight:900, fontSize:24, color:C.purple, margin:"0 auto 16px" } }, "C"),
+      e("div", { className:"spinner", style: { margin:"0 auto" } })
+    )
+  );
+
+  if (!user) return e(AuthScreen, { onAuth:setUser });
+  return e(Dashboard, { user, onLogout:async () => { await sb.auth.signOut(); setUser(null); } });
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+</script>
+</body>
+</html>
