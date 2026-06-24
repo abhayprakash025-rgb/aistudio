@@ -291,15 +291,27 @@ function Dashboard({ user, onLogout }) {
     fetchData();
   }, [user.id]);
 
-  const handleModuleClick = (mod) => {
+const handleModuleClick = async (mod) => {
     if (mod.id === "career-discovery") {
+      // 1. Grab the active Supabase session
+      const { data: { session } } = await supabase.auth.getSession();
+
+      // 2. Keep your existing query parameters
       const params = new URLSearchParams({
         name: displayName,
-        email: user.email || "",
+        email: user?.email || "",
         college: college,
-        student_id: user.id,
+        student_id: user?.id,
       });
-      window.open(`${CAREER_DISCOVERY_URL}?${params.toString()}`, "_blank");
+
+      let finalUrl = `${CAREER_DISCOVERY_URL}?${params.toString()}`;
+
+      // 3. Append the secure tokens to the Hash Fragment (using # instead of ?)
+      if (session) {
+        finalUrl += `#access_token=${session.access_token}&refresh_token=${session.refresh_token}`;
+      }
+
+      window.open(finalUrl, "_blank");
     }
   };
 
