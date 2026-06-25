@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/resume-coach",
+      "destination": "https://YOUR-NEW-URL.vercel.app/resume-coach"
+    },
+    {
+      "source": "/resume-coach/:match*",
+      "destination": "https://YOUR-NEW-URL.vercel.app/resume-coach/:match*"
+    }
+  ]
+}
