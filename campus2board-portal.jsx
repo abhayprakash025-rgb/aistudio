@@ -390,7 +390,7 @@ const handleModuleClick = async (mod) => {
                 <div style={{ background: `linear-gradient(90deg, ${C.gold}, ${C.goldLight})`, height: "100%", width: isCareerDiscoveryComplete ? "40%" : "20%", borderRadius: 100, transition: "width 1s ease" }} />
               </div>
               <div style={{ display: "flex", gap: 16, marginTop: 10, flexWrap: "wrap" }}>
-                {[{ label: "Profile Created", done: true }, { label: "Career Discovery", done: isCareerDiscoveryComplete }, { label: "CV Uploaded", done: false }, { label: "Interview Training", done: false }, { label: "Applied to Role", done: false }].map((step, i) => (
+                {[{ label: "Profile Created", done: true }, { label: "Career Discovery", done: isCareerDiscoveryComplete }, { label: "Resume Builder", done: false }, { label: "Interview Training", done: false }, { label: "Applied to Role", done: false }].map((step, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: 5, color: step.done ? C.gold : "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: 600 }}>
                     <span style={{ width: 14, height: 14, borderRadius: "50%", background: step.done ? C.gold : "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8 }}>
                       {step.done && "✓"}
