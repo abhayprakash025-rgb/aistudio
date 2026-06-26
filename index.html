@@ -219,6 +219,7 @@ function AuthScreen({ onAuth }) {
 // ─── Dashboard ──────────────────────────────────────────────────────────────────
 function Dashboard({ user, onLogout }) {
   const [blueprint, setBlueprint] = useState(null);
+  const [careerDiscoveryDone, setCareerDiscoveryDone] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const e = React.createElement;
 
@@ -228,6 +229,16 @@ function Dashboard({ user, onLogout }) {
 
   useEffect(() => {
     const load = async () => {
+      try {
+        // Check campus2board_sessions: if report is NOT NULL, Career Discovery is complete
+        const { data: sessionData } = await sb.from("campus2board_sessions")
+          .select("report")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (sessionData && sessionData.report !== null) {
+          setCareerDiscoveryDone(true);
+        }
+      } catch(err) {}
       try {
         const { data } = await sb.from("career_blueprints").select("*").eq("student_id", user.id).order("created_at", { ascending:false }).limit(1).maybeSingle();
         setBlueprint(data);
@@ -254,9 +265,12 @@ function Dashboard({ user, onLogout }) {
   const fitScore = blueprint?.recommendation_confidence || (blueprint?.report_data?.recommendationConfidence) || 0;
   const topMatches = blueprint?.report_data?.topCareerMatches || [];
 
+  // Career Discovery complete if sessions.report is NOT NULL OR a blueprint exists
+  const isCareerDiscoveryComplete = careerDiscoveryDone || hasBlueprint;
+
   const progressSteps = [
     { label:"Profile Created", done:true },
-    { label:"Career Discovery", done:hasBlueprint },
+    { label:"Career Discovery", done:isCareerDiscoveryComplete },
     { label:"CV Uploaded", done:false },
     { label:"Interview Training", done:false },
     { label:"Applied to Role", done:false },
@@ -303,7 +317,9 @@ function Dashboard({ user, onLogout }) {
               e("p", { style: { color:"rgba(255,255,255,0.6)", fontSize:14, margin:0, maxWidth:460, lineHeight:1.6 } },
                 hasBlueprint
                   ? "Your Career Blueprint is ready. Continue building your profile to unlock all 5 modules."
-                  : "Start with Career Discovery — a 15-minute AI assessment that maps your strengths to the right MBA roles."
+                  : isCareerDiscoveryComplete
+                    ? "Career Discovery complete! Upload your CV next to keep building your profile."
+                    : "Start with Career Discovery — a 15-minute AI assessment that maps your strengths to the right MBA roles."
               )
             ),
             hasBlueprint && fitScore > 0 && e("div", { style: { background:"rgba(255,255,255,0.1)", backdropFilter:"blur(12px)",
