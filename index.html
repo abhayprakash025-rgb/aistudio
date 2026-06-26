@@ -34,6 +34,7 @@ const { createClient } = supabase;
 const SUPABASE_URL = "https://yhycjpsbuiidboadvchp.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InloeWNqcHNidWlpZGJvYWR2Y2hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMjMxMTUsImV4cCI6MjA5Nzc5OTExNX0.9l639s3cddDx9nHWeAr533yJ996rM4tqSQU8iUrPUWg";
 const CAREER_DISCOVERY_URL = "https://campus2board-v2-career-intelligence-platform-561715786352.asia-southeast1.run.app";
+const RESUME_BUILDER_URL = "YOUR_RESUME_BUILDER_AISTUDIO_URL_HERE"; // ← Replace with your AI Studio app URL
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ─── Palette ───────────────────────────────────────────────────────────────────
@@ -235,9 +236,16 @@ function Dashboard({ user, onLogout }) {
     load();
   }, [user.id]);
 
-  const goToDiscovery = () => {
+  const handleModuleClick = async (modId) => {
+    const { data: { session } } = await sb.auth.getSession();
     const p = new URLSearchParams({ name:displayName, email:user.email||"", college, student_id:user.id });
-    window.open(`${CAREER_DISCOVERY_URL}?${p.toString()}`, "_blank");
+    let baseUrl;
+    if (modId === "career-discovery") baseUrl = CAREER_DISCOVERY_URL;
+    else if (modId === "resume-builder") baseUrl = RESUME_BUILDER_URL;
+    else return;
+    let finalUrl = `${baseUrl}?${p.toString()}`;
+    if (session) finalUrl += `#access_token=${session.access_token}&refresh_token=${session.refresh_token}`;
+    window.open(finalUrl, "_blank");
   };
 
   const hasBlueprint = !!blueprint;
@@ -335,7 +343,7 @@ function Dashboard({ user, onLogout }) {
               `Generated ${new Date(blueprint.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})}`
             )
           ),
-          e("button", { onClick:goToDiscovery, style: { background:"transparent", color:C.purple, border:`2px solid ${C.purple}`,
+          e("button", { onClick:() => handleModuleClick("career-discovery"), style: { background:"transparent", color:C.purple, border:`2px solid ${C.purple}`,
             borderRadius:10, padding:"9px 18px", fontWeight:600, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", gap:6 } },
             "View Full Report ", e(Icons.chevron))
         ),
@@ -359,7 +367,7 @@ function Dashboard({ user, onLogout }) {
           const ModIcon = Icons[mod.icon];
           return e("div", { key:mod.id, className:`module-card ${mod.live ? "live" : ""}`,
             // UPDATED: Dynamic routing based on module ID
-            onClick:() => mod.live && (mod.id === 'resume-builder' ? window.location.href = '/resume-coach' : goToDiscovery()),
+            onClick:() => mod.live && handleModuleClick(mod.id),
             style: { background:C.white, borderRadius:18, border:`1px solid ${C.border}`, padding:28,
               cursor:mod.live ? "pointer" : "default", position:"relative", overflow:"hidden",
               boxShadow:"0 2px 8px rgba(75,0,130,0.05)", opacity:mod.live ? 1 : 0.82 } },
@@ -381,7 +389,7 @@ function Dashboard({ user, onLogout }) {
             e("p", { style: { margin:"0 0 22px", fontSize:13.5, color:C.muted, lineHeight:1.65 } }, mod.desc),
             
             // UPDATED: Dynamic routing for the button click
-            e("button", { onClick:ev => { ev.stopPropagation(); mod.live && (mod.id === 'resume-builder' ? window.location.href = '/resume-coach' : goToDiscovery()); }, disabled:!mod.live,
+            e("button", { onClick:ev => { ev.stopPropagation(); mod.live && handleModuleClick(mod.id); }, disabled:!mod.live,
               style: { background:mod.live ? C.purple : C.border, color:mod.live ? C.white : C.muted, border:"none",
                 borderRadius:10, padding:"11px 20px", fontWeight:600, fontSize:13, cursor:mod.live ? "pointer" : "not-allowed",
                 width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:8 } },
