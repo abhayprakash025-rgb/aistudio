@@ -243,6 +243,7 @@ function Dashboard({ user, onLogout }) {
     let baseUrl;
     if (modId === "career-discovery") baseUrl = CAREER_DISCOVERY_URL;
     else if (modId === "resume-builder") baseUrl = RESUME_BUILDER_URL;
+    else if (modId === "interview-training") baseUrl = INTERVIEW_TRAINING_URL;
     else return;
     let finalUrl = `${baseUrl}?${p.toString()}`;
     if (session) finalUrl += `#access_token=${session.access_token}&refresh_token=${session.refresh_token}`;
