@@ -9,6 +9,7 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const SUPABASE_URL = "https://yhycjpsbuiidboadvchp.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InloeWNqcHNidWlpZGJvYWR2Y2hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMjMxMTUsImV4cCI6MjA5Nzc5OTExNX0.9l639s3cddDx9nHWeAr533yJ996rM4tqSQU8iUrPUWg";
 const CAREER_DISCOVERY_URL = "https://campus2board-v2-career-intelligence-platform-561715786352.asia-southeast1.run.app";
+const RESUME_BUILDER_URL = "https://campus2board-resume-review-561715786352.asia-southeast1.run.app";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -221,9 +222,9 @@ const MODULES = [
     color: "#1D6A45",
     accent: "#A7F3D0",
     cta: "Upload CV",
-    badge: "Coming Soon",
-    badgeColor: C.muted,
-    live: false,
+    badge: "New Module",
+    badgeColor: C.success,
+    live: true,
   },
   {
     id: "interview-training",
@@ -292,25 +293,19 @@ function Dashboard({ user, onLogout }) {
   }, [user.id]);
 
 const handleModuleClick = async (mod) => {
-    if (mod.id === "career-discovery") {
-      // 1. Grab the active Supabase session
+    if (mod.id === "career-discovery" || mod.id === "resume-builder") {
       const { data: { session } } = await supabase.auth.getSession();
-
-      // 2. Keep your existing query parameters
       const params = new URLSearchParams({
         name: displayName,
         email: user?.email || "",
         college: college,
         student_id: user?.id,
       });
-
-      let finalUrl = `${CAREER_DISCOVERY_URL}?${params.toString()}`;
-
-      // 3. Append the secure tokens to the Hash Fragment (using # instead of ?)
+      const baseUrl = mod.id === "career-discovery" ? CAREER_DISCOVERY_URL : RESUME_BUILDER_URL;
+      let finalUrl = `${baseUrl}?${params.toString()}`;
       if (session) {
         finalUrl += `#access_token=${session.access_token}&refresh_token=${session.refresh_token}`;
       }
-
       window.open(finalUrl, "_blank");
     }
   };
