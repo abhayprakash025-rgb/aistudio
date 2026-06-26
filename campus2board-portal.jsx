@@ -10,6 +10,7 @@ const SUPABASE_URL = "https://yhycjpsbuiidboadvchp.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InloeWNqcHNidWlpZGJvYWR2Y2hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMjMxMTUsImV4cCI6MjA5Nzc5OTExNX0.9l639s3cddDx9nHWeAr533yJ996rM4tqSQU8iUrPUWg";
 const CAREER_DISCOVERY_URL = "https://campus2board-v2-career-intelligence-platform-561715786352.asia-southeast1.run.app";
 const RESUME_BUILDER_URL = "https://campus2board-resume-review-561715786352.asia-southeast1.run.app";
+const INTERVIEW_TRAINING_URL = "https://campus2board-interview-619074305977.asia-southeast1.run.app";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -236,9 +237,9 @@ const MODULES = [
     color: "#1E40AF",
     accent: "#BFDBFE",
     cta: "Start Practice",
-    badge: "Coming Soon",
-    badgeColor: C.muted,
-    live: false,
+    badge: "New Module",
+    badgeColor: C.success,
+    live: true,
   },
   {
     id: "workplace-simulation",
@@ -293,7 +294,7 @@ function Dashboard({ user, onLogout }) {
   }, [user.id]);
 
 const handleModuleClick = async (mod) => {
-    if (mod.id === "career-discovery" || mod.id === "resume-builder") {
+    if (mod.id === "career-discovery" || mod.id === "resume-builder" || mod.id === "interview-training") {
       const { data: { session } } = await supabase.auth.getSession();
       const params = new URLSearchParams({
         name: displayName,
@@ -301,7 +302,11 @@ const handleModuleClick = async (mod) => {
         college: college,
         student_id: user?.id,
       });
-      const baseUrl = mod.id === "career-discovery" ? CAREER_DISCOVERY_URL : RESUME_BUILDER_URL;
+      let baseUrl;
+      if (mod.id === "career-discovery") baseUrl = CAREER_DISCOVERY_URL;
+      else if (mod.id === "resume-builder") baseUrl = RESUME_BUILDER_URL;
+      else if (mod.id === "interview-training") baseUrl = INTERVIEW_TRAINING_URL;
+      else return;
       let finalUrl = `${baseUrl}?${params.toString()}`;
       if (session) {
         finalUrl += `#access_token=${session.access_token}&refresh_token=${session.refresh_token}`;
