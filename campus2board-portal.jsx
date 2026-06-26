@@ -275,6 +275,7 @@ const MODULES = [
 function Dashboard({ user, onLogout }) {
   const [studentData, setStudentData] = useState(null);
   const [blueprint, setBlueprint] = useState(null);
+  const [careerDiscoveryDone, setCareerDiscoveryDone] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const displayName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Student";
@@ -285,6 +286,16 @@ function Dashboard({ user, onLogout }) {
       try {
         const { data: student } = await supabase.from("students").select("*").eq("id", user.id).single();
         setStudentData(student);
+
+        // Check campus2board_sessions: report NOT NULL means Career Discovery is done
+        const { data: sessionData } = await supabase.from("campus2board_sessions")
+          .select("report")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (sessionData && sessionData.report !== null) {
+          setCareerDiscoveryDone(true);
+        }
+
         const { data: bp } = await supabase.from("career_blueprints").select("*").eq("student_id", user.id).order("created_at", { ascending: false }).limit(1).single();
         setBlueprint(bp);
       } catch (e) { /* no data yet */ }
@@ -317,6 +328,8 @@ const handleModuleClick = async (mod) => {
 
   const completionScore = blueprint ? Math.round((blueprint.recommendation_confidence || 0)) : 0;
   const hasBlueprint = !!blueprint;
+  // Career Discovery complete if sessions.report is NOT NULL OR a blueprint exists
+  const isCareerDiscoveryComplete = careerDiscoveryDone || hasBlueprint;
 
   return (
     <div style={styles.page}>
@@ -371,13 +384,13 @@ const handleModuleClick = async (mod) => {
             <div style={{ marginTop: 24 }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                 <span style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, fontWeight: 600 }}>PROFILE COMPLETION</span>
-                <span style={{ color: C.gold, fontSize: 12, fontWeight: 700 }}>{hasBlueprint ? "60%" : "20%"}</span>
+                <span style={{ color: C.gold, fontSize: 12, fontWeight: 700 }}>{isCareerDiscoveryComplete ? "40%" : "20%"}</span>
               </div>
               <div style={{ background: "rgba(255,255,255,0.15)", borderRadius: 100, height: 8, overflow: "hidden" }}>
-                <div style={{ background: `linear-gradient(90deg, ${C.gold}, ${C.goldLight})`, height: "100%", width: hasBlueprint ? "60%" : "20%", borderRadius: 100, transition: "width 1s ease" }} />
+                <div style={{ background: `linear-gradient(90deg, ${C.gold}, ${C.goldLight})`, height: "100%", width: isCareerDiscoveryComplete ? "40%" : "20%", borderRadius: 100, transition: "width 1s ease" }} />
               </div>
               <div style={{ display: "flex", gap: 16, marginTop: 10, flexWrap: "wrap" }}>
-                {[{ label: "Profile Created", done: true }, { label: "Career Discovery", done: hasBlueprint }, { label: "CV Uploaded", done: false }, { label: "Interview Training", done: false }, { label: "Applied to Role", done: false }].map((step, i) => (
+                {[{ label: "Profile Created", done: true }, { label: "Career Discovery", done: isCareerDiscoveryComplete }, { label: "CV Uploaded", done: false }, { label: "Interview Training", done: false }, { label: "Applied to Role", done: false }].map((step, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: 5, color: step.done ? C.gold : "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: 600 }}>
                     <span style={{ width: 14, height: 14, borderRadius: "50%", background: step.done ? C.gold : "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8 }}>
                       {step.done && "✓"}
