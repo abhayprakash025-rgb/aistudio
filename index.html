@@ -246,12 +246,27 @@ function Dashboard({ user, onLogout }) {
         setBlueprint(data);
       } catch(err) {}
       try {
-        // Check campus2board_resume: resume_downloaded NOT NULL means CV step is done
-        const { data: resumeData } = await sb.from("campus2board_resume")
-          .select("resume_downloaded")
-          .eq("user_id", user.id)
+        // Check campus2board_resume: query by user_id (text) OR student_id (text)
+        // Both columns are type text, so cast user.id to string explicitly
+        const userId = String(user.id);
+        let resumeData = null;
+        const { data: r1 } = await sb.from("campus2board_resume")
+          .select("resume_downloaded, downloaded_pdf, downloaded_word")
+          .eq("user_id", userId)
           .maybeSingle();
-        if (resumeData && resumeData.resume_downloaded !== null) {
+        if (r1) { resumeData = r1; }
+        if (!resumeData) {
+          const { data: r2 } = await sb.from("campus2board_resume")
+            .select("resume_downloaded, downloaded_pdf, downloaded_word")
+            .eq("student_id", userId)
+            .maybeSingle();
+          if (r2) { resumeData = r2; }
+        }
+        if (resumeData && (
+          resumeData.resume_downloaded !== null ||
+          resumeData.downloaded_pdf === true ||
+          resumeData.downloaded_word === true
+        )) {
           setResumeDone(true);
         }
       } catch(err) {}
