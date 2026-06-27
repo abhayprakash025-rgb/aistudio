@@ -11,6 +11,7 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const CAREER_DISCOVERY_URL = "https://campus2board-v2-career-intelligence-platform-561715786352.asia-southeast1.run.app";
 const RESUME_BUILDER_URL = "https://campus2board-resume-review-561715786352.asia-southeast1.run.app";
 const INTERVIEW_TRAINING_URL = "https://campus2board-interview-619074305977.asia-southeast1.run.app";
+const WORKPLACE_SIMULATION_URL = "https://campus2board-workplace-ai-619074305977.asia-southeast1.run.app";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -253,7 +254,7 @@ const MODULES = [
     cta: "Run Simulation",
     badge: "In Discovery",
     badgeColor: C.gold,
-    live: false,
+    live: true,
   },
   {
     id: "opportunities",
@@ -343,7 +344,7 @@ function Dashboard({ user, onLogout }) {
   }, [user.id]);
 
 const handleModuleClick = async (mod) => {
-    if (mod.id === "career-discovery" || mod.id === "resume-builder" || mod.id === "interview-training") {
+    if (mod.id === "career-discovery" || mod.id === "resume-builder" || mod.id === "interview-training" || mod.id === "workplace-simulation") {
       const { data: { session } } = await supabase.auth.getSession();
       const params = new URLSearchParams({
         name: displayName,
@@ -355,6 +356,7 @@ const handleModuleClick = async (mod) => {
       if (mod.id === "career-discovery") baseUrl = CAREER_DISCOVERY_URL;
       else if (mod.id === "resume-builder") baseUrl = RESUME_BUILDER_URL;
       else if (mod.id === "interview-training") baseUrl = INTERVIEW_TRAINING_URL;
+      else if (mod.id === "workplace-simulation") baseUrl = WORKPLACE_SIMULATION_URL;
       else return;
       let finalUrl = `${baseUrl}?${params.toString()}`;
       if (session) {
