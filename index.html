@@ -220,6 +220,8 @@ function AuthScreen({ onAuth }) {
 function Dashboard({ user, onLogout }) {
   const [blueprint, setBlueprint] = useState(null);
   const [careerDiscoveryDone, setCareerDiscoveryDone] = useState(false);
+  const [resumeDone, setResumeDone] = useState(false);
+  const [interviewDone, setInterviewDone] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const e = React.createElement;
 
@@ -242,6 +244,28 @@ function Dashboard({ user, onLogout }) {
       try {
         const { data } = await sb.from("career_blueprints").select("*").eq("student_id", user.id).order("created_at", { ascending:false }).limit(1).maybeSingle();
         setBlueprint(data);
+      } catch(err) {}
+      try {
+        // Check campus2board_resume: resume_downloaded NOT NULL means CV step is done
+        const { data: resumeData } = await sb.from("campus2board_resume")
+          .select("resume_downloaded")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (resumeData && resumeData.resume_downloaded !== null) {
+          setResumeDone(true);
+        }
+      } catch(err) {}
+      try {
+        // Check student_reports: any row with overall_feedback NOT NULL means interview done
+        const { data: reportData } = await sb.from("student_reports")
+          .select("overall_feedback")
+          .eq("student_id", user.id)
+          .not("overall_feedback", "is", null)
+          .limit(1)
+          .maybeSingle();
+        if (reportData) {
+          setInterviewDone(true);
+        }
       } catch(err) {}
       setLoadingData(false);
     };
@@ -271,8 +295,8 @@ function Dashboard({ user, onLogout }) {
   const progressSteps = [
     { label:"Profile Created", done:true },
     { label:"Career Discovery", done:isCareerDiscoveryComplete },
-    { label:"Resume Builder", done:false },
-    { label:"Interview Training", done:false },
+    { label:"Resume Builder", done:resumeDone },
+    { label:"Interview Training", done:interviewDone },
     { label:"Applied to Role", done:false },
   ];
   const progressPct = Math.round((progressSteps.filter(s=>s.done).length / progressSteps.length) * 100);
