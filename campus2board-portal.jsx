@@ -371,6 +371,22 @@ const handleModuleClick = async (mod) => {
   // Career Discovery complete if sessions.report is NOT NULL OR a blueprint exists
   const isCareerDiscoveryComplete = careerDiscoveryDone || hasBlueprint;
 
+  // Dynamic progress: each milestone = 20%
+  const profileCompletion = (() => {
+    if (interviewDone) return { pct: 80, label: "80%" };
+    if (resumeDone) return { pct: 60, label: "60%" };
+    if (isCareerDiscoveryComplete) return { pct: 40, label: "40%" };
+    return { pct: 20, label: "20%" };
+  })();
+
+  // Dynamic subtitle message based on furthest stage reached
+  const bannerSubtitle = (() => {
+    if (interviewDone) return "Great progress! You've completed Interview Training. Explore open opportunities to apply with your validated profile.";
+    if (resumeDone) return "Resume done! Complete AI Interview Training next to strengthen your application.";
+    if (isCareerDiscoveryComplete) return "Career Discovery complete! Upload your CV next to keep building your profile.";
+    return "Begin with Career Discovery to get your personalised Career Blueprint and role recommendations.";
+  })();
+
   return (
     <div style={styles.page}>
       {/* Navbar */}
@@ -407,9 +423,7 @@ const handleModuleClick = async (mod) => {
                   {displayName.split(" ")[0]}, your career journey starts here.
                 </h1>
                 <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 15, margin: 0, maxWidth: 480 }}>
-                  {hasBlueprint
-                    ? "Your Career Blueprint is ready. Continue building on your assessment."
-                    : "Begin with Career Discovery to get your personalised Career Blueprint and role recommendations."}
+                  {bannerSubtitle}
                 </p>
               </div>
               {hasBlueprint && (
@@ -424,10 +438,10 @@ const handleModuleClick = async (mod) => {
             <div style={{ marginTop: 24 }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                 <span style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, fontWeight: 600 }}>PROFILE COMPLETION</span>
-                <span style={{ color: C.gold, fontSize: 12, fontWeight: 700 }}>{isCareerDiscoveryComplete ? "40%" : "20%"}</span>
+                <span style={{ color: C.gold, fontSize: 12, fontWeight: 700 }}>{profileCompletion.label}</span>
               </div>
               <div style={{ background: "rgba(255,255,255,0.15)", borderRadius: 100, height: 8, overflow: "hidden" }}>
-                <div style={{ background: `linear-gradient(90deg, ${C.gold}, ${C.goldLight})`, height: "100%", width: isCareerDiscoveryComplete ? "40%" : "20%", borderRadius: 100, transition: "width 1s ease" }} />
+                <div style={{ background: `linear-gradient(90deg, ${C.gold}, ${C.goldLight})`, height: "100%", width: `${profileCompletion.pct}%`, borderRadius: 100, transition: "width 1s ease" }} />
               </div>
               <div style={{ display: "flex", gap: 16, marginTop: 10, flexWrap: "wrap" }}>
                 {[{ label: "Profile Created", done: true }, { label: "Career Discovery", done: isCareerDiscoveryComplete }, { label: "Resume Builder", done: resumeDone }, { label: "Interview Training", done: interviewDone }, { label: "Applied to Role", done: false }].map((step, i) => (
