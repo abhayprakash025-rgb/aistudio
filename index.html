@@ -5,29 +5,46 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Campus2Board · Student Portal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Inter', 'Segoe UI', sans-serif; background: #F8F9FC; color: #1E1E1E; }
-    input:focus { outline: none; border-color: #4B0082 !important; box-shadow: 0 0 0 3px rgba(75,0,130,0.12); }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: #4B0082 !important; box-shadow: 0 0 0 3px rgba(75,0,130,0.12); }
     button:hover { filter: brightness(1.05); }
     @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
     .fade-in { animation: fadeIn 0.4s ease forwards; }
+    .slide-in { animation: slideIn 0.35s cubic-bezier(0.32, 0.72, 0, 1) forwards; }
     .module-card { transition: transform 0.2s, box-shadow 0.2s; }
     .module-card:hover.live { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(75,0,130,0.15) !important; }
+    .job-card { transition: transform 0.18s, box-shadow 0.18s; }
+    .job-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(75,0,130,0.13) !important; }
     .spinner { width: 28px; height: 28px; border: 3px solid rgba(255,255,255,0.3); border-top-color: #F59E0B; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    .spinner-sm { width: 18px; height: 18px; border: 2px solid rgba(75,0,130,0.2); border-top-color: #4B0082; border-radius: 50%; animation: spin 0.8s linear infinite; }
     ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #F8F9FC; } ::-webkit-scrollbar-thumb { background: #7F6BB3; border-radius: 3px; }
+    select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px !important; }
+    .drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; display: flex; justify-content: flex-end; }
+    .drawer { background: #fff; width: min(560px, 100vw); height: 100vh; overflow-y: auto; box-shadow: -8px 0 40px rgba(0,0,0,0.18); }
+    .tab-active { color: #4B0082; border-bottom: 2px solid #4B0082; }
+    .tab-inactive { color: #6B7280; border-bottom: 2px solid transparent; }
+    .pill { display: inline-flex; align-items: center; background: #F3F0FA; color: #4B0082; border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 600; }
+    .readiness-high { background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; }
+    .readiness-medium { background: #FFFBEB; color: #D97706; border: 1px solid #FDE68A; }
+    .readiness-low { background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; }
+    .filter-select { width: 100%; padding: 10px 36px 10px 12px; border: 1.5px solid #E8E4F0; border-radius: 10px; font-size: 13px; color: #1E1E1E; background: #fff; cursor: pointer; }
+    .search-input { width: 100%; padding: 10px 16px 10px 40px; border: 1.5px solid #E8E4F0; border-radius: 10px; font-size: 13px; color: #1E1E1E; background: #fff; }
   </style>
 </head>
 <body>
 <div id="root"></div>
 
 <script>
-const { useState, useEffect, useRef } = React;
+const { useState, useEffect, useRef, useMemo, useCallback } = React;
 const { createClient } = supabase;
 
 // ─── Config ────────────────────────────────────────────────────────────────────
@@ -35,8 +52,9 @@ const SUPABASE_URL = "https://yhycjpsbuiidboadvchp.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InloeWNqcHNidWlpZGJvYWR2Y2hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMjMxMTUsImV4cCI6MjA5Nzc5OTExNX0.9l639s3cddDx9nHWeAr533yJ996rM4tqSQU8iUrPUWg";
 const CAREER_DISCOVERY_URL = "https://campus2board-v2-career-intelligence-platform-561715786352.asia-southeast1.run.app";
 const RESUME_BUILDER_URL = "https://campus2board-resume-review-561715786352.asia-southeast1.run.app";
-const INTERVIEW_TRAINING_URL ="https://campus2board-interview-619074305977.asia-southeast1.run.app";
+const INTERVIEW_TRAINING_URL = "https://campus2board-interview-619074305977.asia-southeast1.run.app";
 const WORKPLACE_SIMULATION_URL = "https://campus2board-workplace-ai-619074305977.asia-southeast1.run.app";
+const GEMINI_API_KEY = "AQ.Ab8RN6JZErgPfiuvMk2jz6w2oyYPabfo6zpE_fpiQlvsmGL6dg";
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ─── Palette ───────────────────────────────────────────────────────────────────
@@ -48,51 +66,39 @@ const C = {
 };
 
 // ─── SVG Icons ─────────────────────────────────────────────────────────────────
+const e = React.createElement;
 const Icons = {
-  compass: () => React.createElement("svg", {width:22,height:22,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},
-    React.createElement("circle",{cx:12,cy:12,r:10}),React.createElement("polygon",{points:"16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"})),
-  file: () => React.createElement("svg", {width:22,height:22,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},
-    React.createElement("path",{d:"M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"}),
-    React.createElement("polyline",{points:"14 2 14 8 20 8"}),React.createElement("line",{x1:16,y1:13,x2:8,y2:13}),React.createElement("line",{x1:16,y1:17,x2:8,y2:17})),
-  mic: () => React.createElement("svg", {width:22,height:22,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},
-    React.createElement("path",{d:"M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"}),
-    React.createElement("path",{d:"M19 10v2a7 7 0 0 1-14 0v-2"}),React.createElement("line",{x1:12,y1:19,x2:12,y2:23}),React.createElement("line",{x1:8,y1:23,x2:16,y2:23})),
-  grid: () => React.createElement("svg", {width:22,height:22,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},
-    React.createElement("rect",{x:3,y:3,width:7,height:7}),React.createElement("rect",{x:14,y:3,width:7,height:7}),
-    React.createElement("rect",{x:14,y:14,width:7,height:7}),React.createElement("rect",{x:3,y:14,width:7,height:7})),
-  briefcase: () => React.createElement("svg", {width:22,height:22,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},
-    React.createElement("rect",{x:2,y:7,width:20,height:14,rx:2,ry:2}),React.createElement("path",{d:"M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"})),
-  user: () => React.createElement("svg", {width:16,height:16,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},
-    React.createElement("path",{d:"M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"}),React.createElement("circle",{cx:12,cy:7,r:4})),
-  lock: () => React.createElement("svg", {width:16,height:16,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},
-    React.createElement("rect",{x:3,y:11,width:18,height:11,rx:2,ry:2}),React.createElement("path",{d:"M7 11V7a5 5 0 0 1 10 0v4"})),
-  mail: () => React.createElement("svg", {width:16,height:16,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},
-    React.createElement("path",{d:"M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"}),
-    React.createElement("polyline",{points:"22,6 12,13 2,6"})),
-  eye: () => React.createElement("svg", {width:16,height:16,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},
-    React.createElement("path",{d:"M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"}),React.createElement("circle",{cx:12,cy:12,r:3})),
-  eyeOff: () => React.createElement("svg", {width:16,height:16,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},
-    React.createElement("path",{d:"M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"}),
-    React.createElement("path",{d:"M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"}),
-    React.createElement("line",{x1:1,y1:1,x2:23,y2:23})),
-  logout: () => React.createElement("svg", {width:16,height:16,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},
-    React.createElement("path",{d:"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"}),
-    React.createElement("polyline",{points:"16 17 21 12 16 7"}),React.createElement("line",{x1:21,y1:12,x2:9,y2:12})),
-  star: () => React.createElement("svg", {width:12,height:12,fill:C.gold,stroke:C.gold,strokeWidth:2,viewBox:"0 0 24 24"},
-    React.createElement("polygon",{points:"12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"})),
-  chevron: () => React.createElement("svg", {width:14,height:14,fill:"none",stroke:"currentColor",strokeWidth:2.5,viewBox:"0 0 24 24"},
-    React.createElement("polyline",{points:"9 18 15 12 9 6"})),
-  building: () => React.createElement("svg", {width:16,height:16,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},
-    React.createElement("path",{d:"M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"}),
-    React.createElement("polyline",{points:"9 22 9 12 15 12 15 22"})),
+  compass: () => e("svg", {width:22,height:22,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("circle",{cx:12,cy:12,r:10}),e("polygon",{points:"16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"})),
+  file: () => e("svg", {width:22,height:22,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("path",{d:"M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"}),e("polyline",{points:"14 2 14 8 20 8"}),e("line",{x1:16,y1:13,x2:8,y2:13}),e("line",{x1:16,y1:17,x2:8,y2:17})),
+  mic: () => e("svg", {width:22,height:22,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("path",{d:"M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"}),e("path",{d:"M19 10v2a7 7 0 0 1-14 0v-2"}),e("line",{x1:12,y1:19,x2:12,y2:23}),e("line",{x1:8,y1:23,x2:16,y2:23})),
+  grid: () => e("svg", {width:22,height:22,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("rect",{x:3,y:3,width:7,height:7}),e("rect",{x:14,y:3,width:7,height:7}),e("rect",{x:14,y:14,width:7,height:7}),e("rect",{x:3,y:14,width:7,height:7})),
+  briefcase: () => e("svg", {width:22,height:22,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("rect",{x:2,y:7,width:20,height:14,rx:2,ry:2}),e("path",{d:"M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"})),
+  user: () => e("svg", {width:16,height:16,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("path",{d:"M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"}),e("circle",{cx:12,cy:7,r:4})),
+  lock: () => e("svg", {width:16,height:16,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("rect",{x:3,y:11,width:18,height:11,rx:2,ry:2}),e("path",{d:"M7 11V7a5 5 0 0 1 10 0v4"})),
+  mail: () => e("svg", {width:16,height:16,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("path",{d:"M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"}),e("polyline",{points:"22,6 12,13 2,6"})),
+  eye: () => e("svg", {width:16,height:16,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("path",{d:"M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"}),e("circle",{cx:12,cy:12,r:3})),
+  eyeOff: () => e("svg", {width:16,height:16,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("path",{d:"M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"}),e("path",{d:"M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"}),e("line",{x1:1,y1:1,x2:23,y2:23})),
+  logout: () => e("svg", {width:16,height:16,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("path",{d:"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"}),e("polyline",{points:"16 17 21 12 16 7"}),e("line",{x1:21,y1:12,x2:9,y2:12})),
+  star: () => e("svg", {width:12,height:12,fill:C.gold,stroke:C.gold,strokeWidth:2,viewBox:"0 0 24 24"},e("polygon",{points:"12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"})),
+  chevron: () => e("svg", {width:14,height:14,fill:"none",stroke:"currentColor",strokeWidth:2.5,viewBox:"0 0 24 24"},e("polyline",{points:"9 18 15 12 9 6"})),
+  building: () => e("svg", {width:16,height:16,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("path",{d:"M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"}),e("polyline",{points:"9 22 9 12 15 12 15 22"})),
+  search: () => e("svg", {width:16,height:16,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("circle",{cx:11,cy:11,r:8}),e("line",{x1:21,y1:21,x2:16.65,y2:16.65})),
+  bookmark: (filled) => e("svg", {width:16,height:16,fill:filled?"currentColor":"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("path",{d:"M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"})),
+  x: () => e("svg", {width:18,height:18,fill:"none",stroke:"currentColor",strokeWidth:2.5,viewBox:"0 0 24 24"},e("line",{x1:18,y1:6,x2:6,y2:18}),e("line",{x1:6,y1:6,x2:18,y2:18})),
+  check: () => e("svg", {width:14,height:14,fill:"none",stroke:"currentColor",strokeWidth:2.5,viewBox:"0 0 24 24"},e("polyline",{points:"20 6 9 17 4 12"})),
+  zap: () => e("svg", {width:14,height:14,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("polygon",{points:"13 2 3 14 12 14 11 22 21 10 12 10 13 2"})),
+  arrowLeft: () => e("svg", {width:18,height:18,fill:"none",stroke:"currentColor",strokeWidth:2.5,viewBox:"0 0 24 24"},e("line",{x1:19,y1:12,x2:5,y2:12}),e("polyline",{points:"12 19 5 12 12 5"})),
+  mapPin: () => e("svg", {width:13,height:13,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("path",{d:"M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"}),e("circle",{cx:12,cy:10,r:3})),
+  clock: () => e("svg", {width:13,height:13,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("circle",{cx:12,cy:12,r:10}),e("polyline",{points:"12 6 12 12 16 14"})),
+  trendingUp: () => e("svg", {width:16,height:16,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("polyline",{points:"23 6 13.5 15.5 8.5 10.5 1 18"}),e("polyline",{points:"17 6 23 6 23 12"})),
+  brain: () => e("svg", {width:16,height:16,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("path",{d:"M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-2.14z"}),e("path",{d:"M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-2.14z"})),
 };
 
 // ─── Module Config ──────────────────────────────────────────────────────────────
 const MODULES = [
   { id:"career-discovery", num:"01", title:"Career Discovery", sub:"AI-powered career intelligence",
-    desc:"Complete a personalised AI interview and workplace simulations. Receive your Career Blueprint with role recommendations and a 12-month action roadmap.", 
+    desc:"Complete a personalised AI interview and workplace simulations. Receive your Career Blueprint with role recommendations and a 12-month action roadmap.",
     icon:"compass", color:"#4B0082", accent:"#7F6BB3", cta:"Begin Discovery", badge:"Core Module", badgeColor:C.purple, live:true },
-  // UPDATED: AI Resume Builder is now active
   { id:"resume-builder", num:"02", title:"AI Resume Builder", sub:"ATS score & optimisation",
     desc:"Upload your CV and receive an instant ATS compatibility score against your target role, a rewritten summary, and specific gap-closing suggestions.",
     icon:"file", color:"#1D6A45", accent:"#A7F3D0", cta:"Upload CV", badge:"New Module", badgeColor:C.success, live:true },
@@ -104,8 +110,74 @@ const MODULES = [
     icon:"grid", color:"#92400E", accent:"#FDE68A", cta:"Run Simulation", badge:"In Discovery", badgeColor:C.gold, live:true },
   { id:"opportunities", num:"05", title:"Explore Opportunities", sub:"Jobs · Internships · Live Projects",
     desc:"Browse verified opportunities from recruiters matched to your Career Blueprint score. Apply with one click using your validated profile.",
-    icon:"briefcase", color:"#5B21B6", accent:"#DDD6FE", cta:"Browse Openings", badge:"Coming Soon", badgeColor:C.muted, live:false },
+    icon:"briefcase", color:"#5B21B6", accent:"#DDD6FE", cta:"Browse Openings", badge:"Live", badgeColor:C.success, live:true },
 ];
+
+// ─── Mock Jobs (shown when Supabase jobs table is empty) ───────────────────────
+const MOCK_JOBS = [
+  { id:"m1", title:"Associate Consultant", company:"McKinsey & Company", location:"Mumbai", type:"Full-time", domain:"Consulting", experience:"0-1 yr", salary_range:"₹18-22 LPA", skills:["Strategy","Deck Building","Data Analysis","Client Mgmt"], match_score:88, readiness:"high", source:"direct", description:"Join our consulting team to solve complex business problems for leading Indian and global companies." },
+  { id:"m2", title:"Finance Associate", company:"Goldman Sachs", location:"Bengaluru", type:"Full-time", domain:"Finance", experience:"0-2 yrs", salary_range:"₹14-18 LPA", skills:["Financial Modelling","Valuation","Excel","M&A"], match_score:76, readiness:"medium", source:"direct", description:"Work in our investment banking division supporting deal origination, financial modelling, and client presentations." },
+  { id:"m3", title:"Marketing Manager", company:"Hindustan Unilever", location:"Mumbai", type:"Full-time", domain:"Marketing", experience:"1-3 yrs", salary_range:"₹12-16 LPA", skills:["Brand Strategy","P&L Mgmt","Campaign Planning","Consumer Research"], match_score:82, readiness:"high", source:"direct", description:"Lead brand strategy and P&L for a portfolio of FMCG brands." },
+  { id:"m4", title:"Operations Strategy Intern", company:"Flipkart", location:"Bengaluru", type:"Internship", domain:"Operations", experience:"0-1 yr", salary_range:"₹60-80k/mo", skills:["Supply Chain","SQL","Operations Research","Dashboards"], match_score:71, readiness:"medium", source:"direct", description:"Summer internship in our supply chain and logistics team." },
+  { id:"m5", title:"Product Manager", company:"Razorpay", location:"Bengaluru", type:"Full-time", domain:"Tech", experience:"1-3 yrs", salary_range:"₹20-28 LPA", skills:["Product Strategy","SQL","Roadmap","Agile"], match_score:65, readiness:"medium", source:"direct", description:"Own the roadmap for our merchant onboarding and KYC product." },
+  { id:"m6", title:"Business Analyst", company:"BCG", location:"Delhi", type:"Full-time", domain:"Consulting", experience:"0-1 yr", salary_range:"₹16-20 LPA", skills:["Case Solving","Data Analysis","PowerPoint","Client Mgmt"], match_score:84, readiness:"high", source:"direct", description:"Drive hypothesis-led problem solving on client engagements across sectors." },
+  { id:"m7", title:"Category Management Intern", company:"Amazon India", location:"Hyderabad", type:"Internship", domain:"Operations", experience:"0-1 yr", salary_range:"₹65-85k/mo", skills:["Category Mgmt","SQL","Vendor Negotiation","Analytics"], match_score:73, readiness:"medium", source:"direct", description:"Join the Amazon India marketplace team to drive selection, pricing, and promotions." },
+  { id:"m8", title:"Live Project: GTM Strategy", company:"FinTech Startup", location:"Remote", type:"Live Project", domain:"Marketing", experience:"0-1 yr", salary_range:"Stipend + Equity", skills:["GTM Strategy","Pricing","Market Segmentation"], match_score:74, readiness:"medium", source:"direct", description:"Help a Series-A fintech startup build their GTM playbook for Tier-2 and Tier-3 markets." },
+];
+
+// ─── Gemini AI Helper ──────────────────────────────────────────────────────────
+async function callGemini(prompt) {
+  if (!GEMINI_API_KEY) return null;
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 600 } })
+    });
+    const data = await res.json();
+    return data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
+  } catch { return null; }
+}
+
+async function getAIMatch(studentId, job, studentProfile) {
+  // 1. Check cache in ai_matches table
+  try {
+    const { data: cached } = await sb.from("ai_matches").select("*").eq("student_id", studentId).eq("job_id", job.id).maybeSingle();
+    if (cached) return cached;
+  } catch {}
+
+  // 2. Call Gemini if no cache
+  if (!GEMINI_API_KEY) return null;
+  const prompt = `You are a career counsellor for MBA students. Analyse this student's profile against the job and respond in JSON only.
+
+Student profile: ${JSON.stringify(studentProfile || { skills: [], experience: "MBA student" })}
+
+Job: ${job.title} at ${job.company}
+Domain: ${job.domain}
+Requirements: ${(job.skills || []).join(", ")}
+Description: ${job.description || ""}
+
+Respond in this exact JSON format (no markdown):
+{
+  "match_score": <0-100 integer>,
+  "summary": "<2 sentence insight on fit>",
+  "skill_gaps": ["<gap1>", "<gap2>"],
+  "strengths": ["<strength1>", "<strength2>"],
+  "interview_questions": ["<q1>", "<q2>", "<q3>"]
+}`;
+
+  const raw = await callGemini(prompt);
+  if (!raw) return null;
+  try {
+    const clean = raw.replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(clean);
+    // Cache it
+    try {
+      await sb.from("ai_matches").insert({ student_id: studentId, job_id: job.id, ...parsed });
+    } catch {}
+    return parsed;
+  } catch { return null; }
+}
 
 // ─── Auth Screen ────────────────────────────────────────────────────────────────
 function AuthScreen({ onAuth }) {
@@ -124,30 +196,26 @@ function AuthScreen({ onAuth }) {
     setLoading(true);
     try {
       if (mode === "login") {
-        const { data, error: e } = await sb.auth.signInWithPassword({ email, password: pass });
-        if (e) throw e;
+        const { data, error: err } = await sb.auth.signInWithPassword({ email, password: pass });
+        if (err) throw err;
         onAuth(data.user);
       } else {
-        const { data, error: e } = await sb.auth.signUp({ email, password: pass, options: { data: { name, college } } });
-        if (e) throw e;
+        const { data, error: err } = await sb.auth.signUp({ email, password: pass, options: { data: { name, college } } });
+        if (err) throw err;
         if (data.user) {
           await sb.from("students").upsert({ id: data.user.id, name, email, college_name: college, created_at: new Date().toISOString() });
           setSuccess("Account created! Please sign in.");
           setMode("login"); setEmail(""); setPass("");
         }
       }
-    } catch(e) { setError(e.message || "Something went wrong."); }
+    } catch(err) { setError(err.message || "Something went wrong."); }
     setLoading(false);
   };
 
-  const e = React.createElement;
-  return e("div", { style: { minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center",
-    background:`linear-gradient(135deg, ${C.purple} 0%, #2D0052 55%, #1E1E1E 100%)`, position:"relative", overflow:"hidden" } },
-    // Decorative blobs
+  return e("div", { style: { minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:`linear-gradient(135deg, ${C.purple} 0%, #2D0052 55%, #1E1E1E 100%)`, position:"relative", overflow:"hidden" } },
     e("div", { style: { position:"absolute", top:-120, right:-80, width:380, height:380, borderRadius:"50%", background:"rgba(245,158,11,0.07)", filter:"blur(70px)" } }),
     e("div", { style: { position:"absolute", bottom:-80, left:-80, width:320, height:320, borderRadius:"50%", background:"rgba(127,107,179,0.1)", filter:"blur(60px)" } }),
     e("div", { className:"fade-in", style: { width:"100%", maxWidth:440, padding:"0 20px", position:"relative", zIndex:1 } },
-      // Logo
       e("div", { style: { textAlign:"center", marginBottom:36 } },
         e("div", { style: { display:"inline-flex", alignItems:"center", gap:14, marginBottom:12 } },
           e("div", { style: { width:52, height:52, background:C.gold, borderRadius:14, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:900, fontSize:24, color:C.purple } }, "C"),
@@ -158,56 +226,45 @@ function AuthScreen({ onAuth }) {
         ),
         e("p", { style: { color:"rgba(255,255,255,0.5)", fontSize:14, margin:0 } }, "Your MBA career readiness platform")
       ),
-      // Card
       e("div", { style: { background:C.white, borderRadius:20, padding:36, boxShadow:"0 32px 80px rgba(0,0,0,0.4)" } },
-        // Tabs
         e("div", { style: { display:"flex", background:C.bgSec, borderRadius:12, padding:4, marginBottom:28, gap:4 } },
           ["login","signup"].map(m => e("button", { key:m, onClick:() => { setMode(m); setError(""); setSuccess(""); },
-            style: { flex:1, padding:"10px 0", borderRadius:9, border:"none", fontSize:14, fontWeight:600, cursor:"pointer",
-              transition:"all 0.2s", background:mode===m ? C.purple : "transparent", color:mode===m ? C.white : C.muted } },
+            style: { flex:1, padding:"10px 0", borderRadius:9, border:"none", fontSize:14, fontWeight:600, cursor:"pointer", transition:"all 0.2s", background:mode===m ? C.purple : "transparent", color:mode===m ? C.white : C.muted } },
             m === "login" ? "Sign In" : "Create Account"))
         ),
-        // Fields
         e("div", { style: { display:"flex", flexDirection:"column", gap:16 } },
           mode === "signup" && e("div", null,
             e("label", { style: { fontSize:13, fontWeight:600, color:C.charcoal, marginBottom:6, display:"block" } }, "Full Name"),
             e("div", { style: { position:"relative" } },
               e("span", { style: { position:"absolute", left:13, top:"50%", transform:"translateY(-50%)", color:C.muted } }, e(Icons.user)),
-              e("input", { style: { width:"100%", padding:"12px 16px 12px 40px", border:`1.5px solid ${C.border}`, borderRadius:10, fontSize:15, color:C.charcoal, background:C.white },
-                placeholder:"Aryan Sharma", value:name, onChange:ev => setName(ev.target.value) })
+              e("input", { style: { width:"100%", padding:"12px 16px 12px 40px", border:`1.5px solid ${C.border}`, borderRadius:10, fontSize:15, color:C.charcoal, background:C.white }, placeholder:"Aryan Sharma", value:name, onChange:ev => setName(ev.target.value) })
             )
           ),
           mode === "signup" && e("div", null,
             e("label", { style: { fontSize:13, fontWeight:600, color:C.charcoal, marginBottom:6, display:"block" } }, "College / University"),
             e("div", { style: { position:"relative" } },
               e("span", { style: { position:"absolute", left:13, top:"50%", transform:"translateY(-50%)", color:C.muted } }, e(Icons.building)),
-              e("input", { style: { width:"100%", padding:"12px 16px 12px 40px", border:`1.5px solid ${C.border}`, borderRadius:10, fontSize:15, color:C.charcoal, background:C.white },
-                placeholder:"IIM Ahmedabad, XLRI, etc.", value:college, onChange:ev => setCollege(ev.target.value) })
+              e("input", { style: { width:"100%", padding:"12px 16px 12px 40px", border:`1.5px solid ${C.border}`, borderRadius:10, fontSize:15, color:C.charcoal, background:C.white }, placeholder:"IIM Ahmedabad, XLRI, etc.", value:college, onChange:ev => setCollege(ev.target.value) })
             )
           ),
           e("div", null,
             e("label", { style: { fontSize:13, fontWeight:600, color:C.charcoal, marginBottom:6, display:"block" } }, "Email Address"),
             e("div", { style: { position:"relative" } },
               e("span", { style: { position:"absolute", left:13, top:"50%", transform:"translateY(-50%)", color:C.muted } }, e(Icons.mail)),
-              e("input", { type:"email", style: { width:"100%", padding:"12px 16px 12px 40px", border:`1.5px solid ${C.border}`, borderRadius:10, fontSize:15, color:C.charcoal, background:C.white },
-                placeholder:"you@college.edu", value:email, onChange:ev => setEmail(ev.target.value), onKeyDown:ev => ev.key==="Enter" && submit() })
+              e("input", { type:"email", style: { width:"100%", padding:"12px 16px 12px 40px", border:`1.5px solid ${C.border}`, borderRadius:10, fontSize:15, color:C.charcoal, background:C.white }, placeholder:"you@college.edu", value:email, onChange:ev => setEmail(ev.target.value), onKeyDown:ev => ev.key==="Enter" && submit() })
             )
           ),
           e("div", null,
             e("label", { style: { fontSize:13, fontWeight:600, color:C.charcoal, marginBottom:6, display:"block" } }, "Password"),
             e("div", { style: { position:"relative" } },
               e("span", { style: { position:"absolute", left:13, top:"50%", transform:"translateY(-50%)", color:C.muted } }, e(Icons.lock)),
-              e("input", { type:showPass ? "text" : "password", style: { width:"100%", padding:"12px 44px 12px 40px", border:`1.5px solid ${C.border}`, borderRadius:10, fontSize:15, color:C.charcoal, background:C.white },
-                placeholder:"••••••••", value:pass, onChange:ev => setPass(ev.target.value), onKeyDown:ev => ev.key==="Enter" && submit() }),
-              e("button", { onClick:() => setShowPass(!showPass), style: { position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:C.muted, padding:2 } },
-                e(showPass ? Icons.eyeOff : Icons.eye))
+              e("input", { type:showPass ? "text" : "password", style: { width:"100%", padding:"12px 44px 12px 40px", border:`1.5px solid ${C.border}`, borderRadius:10, fontSize:15, color:C.charcoal, background:C.white }, placeholder:"••••••••", value:pass, onChange:ev => setPass(ev.target.value), onKeyDown:ev => ev.key==="Enter" && submit() }),
+              e("button", { onClick:() => setShowPass(!showPass), style: { position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:C.muted, padding:2 } }, e(showPass ? Icons.eyeOff : Icons.eye))
             )
           ),
-          error && e("div", { style: { background:"#FEF2F2", border:`1px solid #FECACA`, borderRadius:8, padding:"10px 14px", color:C.error, fontSize:13, fontWeight:500 } }, error),
-          success && e("div", { style: { background:"#ECFDF5", border:`1px solid #A7F3D0`, borderRadius:8, padding:"10px 14px", color:C.success, fontSize:13, fontWeight:500 } }, success),
-          e("button", { onClick:submit, disabled:loading,
-            style: { background:C.purple, color:C.white, border:"none", borderRadius:10, padding:"14px 24px", fontWeight:700, fontSize:15, cursor:loading?"not-allowed":"pointer",
-              width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:10, opacity:loading?0.75:1, marginTop:4 } },
+          error && e("div", { style: { background:"#FEF2F2", border:"1px solid #FECACA", borderRadius:8, padding:"10px 14px", color:C.error, fontSize:13, fontWeight:500 } }, error),
+          success && e("div", { style: { background:"#ECFDF5", border:"1px solid #A7F3D0", borderRadius:8, padding:"10px 14px", color:C.success, fontSize:13, fontWeight:500 } }, success),
+          e("button", { onClick:submit, disabled:loading, style: { background:C.purple, color:C.white, border:"none", borderRadius:10, padding:"14px 24px", fontWeight:700, fontSize:15, cursor:loading?"not-allowed":"pointer", width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:10, opacity:loading?0.75:1, marginTop:4 } },
             loading ? e("div", { className:"spinner" }) : (mode==="login" ? "Sign In to Portal" : "Create My Account")
           )
         )
@@ -217,14 +274,423 @@ function AuthScreen({ onAuth }) {
   );
 }
 
+// ─── Job Detail Drawer ──────────────────────────────────────────────────────────
+function JobDetailDrawer({ job, onClose, studentId, studentProfile, savedJobs, onSave, onApply, appliedJobIds }) {
+  const [tab, setTab] = useState("overview");
+  const [aiData, setAiData] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+
+  useEffect(() => {
+    if (!job) return;
+    setTab("overview");
+    setAiData(null);
+  }, [job?.id]);
+
+  const loadAI = async () => {
+    if (aiData || aiLoading || !job) return;
+    setAiLoading(true);
+    const data = await getAIMatch(studentId, job, studentProfile);
+    setAiData(data);
+    setAiLoading(false);
+  };
+
+  useEffect(() => {
+    if (tab === "readiness" || tab === "interview") loadAI();
+  }, [tab]);
+
+  if (!job) return null;
+  const isSaved = savedJobs?.some(s => s.job_id === job.id);
+  const isApplied = appliedJobIds?.has(job.id);
+  const readinessColor = job.readiness === "high" ? C.success : job.readiness === "medium" ? C.gold : C.error;
+
+  const scoreDisplay = aiData?.match_score ?? job.match_score ?? 0;
+
+  return e("div", { className:"drawer-overlay", onClick:onClose },
+    e("div", { className:"drawer slide-in", onClick:ev => ev.stopPropagation() },
+      // Header
+      e("div", { style: { background:`linear-gradient(135deg, ${C.purple}, #6A0DAD)`, padding:"24px 24px 20px", color:C.white, position:"sticky", top:0, zIndex:10 } },
+        e("div", { style: { display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:16 } },
+          e("div", { style: { display:"flex", gap:12, alignItems:"flex-start" } },
+            e("div", { style: { width:48, height:48, borderRadius:12, background:"rgba(255,255,255,0.15)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, fontWeight:800, color:C.gold, flexShrink:0 } }, (job.company||"?")[0]),
+            e("div", null,
+              e("h2", { style: { margin:0, fontSize:18, fontWeight:800, lineHeight:1.2 } }, job.title),
+              e("p", { style: { margin:"4px 0 0", fontSize:13, color:"rgba(255,255,255,0.7)" } }, job.company)
+            )
+          ),
+          e("button", { onClick:onClose, style: { background:"rgba(255,255,255,0.12)", border:"none", borderRadius:8, padding:"6px 8px", cursor:"pointer", color:C.white } }, e(Icons.x))
+        ),
+        e("div", { style: { display:"flex", gap:8, flexWrap:"wrap", marginBottom:16 } },
+          e("span", { className:"pill", style: { background:"rgba(255,255,255,0.15)", color:C.white } }, e(Icons.mapPin), " " + (job.location||"Remote")),
+          e("span", { className:"pill", style: { background:"rgba(255,255,255,0.15)", color:C.white } }, e(Icons.clock), " " + (job.type||"Full-time")),
+          job.salary_range && e("span", { className:"pill", style: { background:"rgba(245,158,11,0.25)", color:C.gold } }, job.salary_range),
+          e("span", { className:`pill readiness-${job.readiness}`, style:{} }, job.readiness === "high" ? "✓ Strong Match" : job.readiness === "medium" ? "~ Partial Match" : "! Skill Gap")
+        ),
+        // Match score ring
+        e("div", { style: { display:"flex", alignItems:"center", gap:16, background:"rgba(255,255,255,0.08)", borderRadius:12, padding:"12px 16px" } },
+          e("div", { style: { width:56, height:56, borderRadius:"50%", border:`4px solid ${readinessColor}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 } },
+            e("span", { style: { fontSize:16, fontWeight:900, color:C.white } }, scoreDisplay + "%")
+          ),
+          e("div", null,
+            e("div", { style: { fontSize:12, color:"rgba(255,255,255,0.6)", fontWeight:600, letterSpacing:"0.5px", textTransform:"uppercase" } }, "Career Fit Score"),
+            e("div", { style: { fontSize:13, color:"rgba(255,255,255,0.8)", marginTop:3 } }, aiData ? "AI-personalised score" : "Based on role requirements")
+          )
+        )
+      ),
+      // Tabs
+      e("div", { style: { display:"flex", borderBottom:`1px solid ${C.border}`, padding:"0 24px", background:C.white, position:"sticky", top: "calc(100% - 100%)", zIndex:9 } },
+        ["overview","readiness","interview"].map(t =>
+          e("button", { key:t, onClick:() => setTab(t), style: { padding:"12px 16px", border:"none", background:"none", cursor:"pointer", fontSize:13, fontWeight:600, letterSpacing:"0.2px", transition:"all 0.15s" }, className: t===tab ? "tab-active" : "tab-inactive" },
+            t === "overview" ? "Overview" : t === "readiness" ? "⚡ Readiness" : "🎯 Interview Prep"
+          )
+        )
+      ),
+      // Body
+      e("div", { style: { padding:"24px" } },
+        tab === "overview" && e("div", { className:"fade-in" },
+          e("div", { style: { marginBottom:20 } },
+            e("h4", { style: { margin:"0 0 10px", fontSize:14, fontWeight:700, color:C.charcoal } }, "About This Role"),
+            e("p", { style: { margin:0, fontSize:14, color:C.muted, lineHeight:1.7 } }, job.description || "No description available.")
+          ),
+          job.skills?.length > 0 && e("div", { style: { marginBottom:20 } },
+            e("h4", { style: { margin:"0 0 10px", fontSize:14, fontWeight:700, color:C.charcoal } }, "Key Skills"),
+            e("div", { style: { display:"flex", flexWrap:"wrap", gap:6 } },
+              job.skills.map((s,i) => e("span", { key:i, className:"pill" }, s))
+            )
+          ),
+          e("div", { style: { marginBottom:20, background:C.lavenderBg, borderRadius:12, padding:"16px" } },
+            e("h4", { style: { margin:"0 0 10px", fontSize:13, fontWeight:700, color:C.purple, textTransform:"uppercase", letterSpacing:"0.5px" } }, "Role Details"),
+            [["Domain", job.domain], ["Experience", job.experience], ["Type", job.type], ["Location", job.location]].map(([k,v]) =>
+              v ? e("div", { key:k, style: { display:"flex", justifyContent:"space-between", fontSize:13, padding:"6px 0", borderBottom:`1px solid ${C.border}` } },
+                e("span", { style: { color:C.muted, fontWeight:500 } }, k),
+                e("span", { style: { color:C.charcoal, fontWeight:600 } }, v)
+              ) : null
+            )
+          ),
+          e("div", { style: { display:"flex", gap:10 } },
+            e("button", { onClick:() => onApply(job), disabled:isApplied,
+              style: { flex:1, background:isApplied ? C.success : C.purple, color:C.white, border:"none", borderRadius:10, padding:"12px 20px", fontWeight:600, fontSize:14, cursor:isApplied?"default":"pointer" } },
+              isApplied ? "✓ Applied" : "Apply Now"
+            ),
+            e("button", { onClick:() => onSave(job),
+              style: { padding:"12px 16px", border:`1.5px solid ${C.border}`, borderRadius:10, background:isSaved ? C.lavenderBg : C.white, cursor:"pointer", color:isSaved ? C.purple : C.muted } },
+              e(Icons.bookmark, isSaved)
+            )
+          )
+        ),
+        tab === "readiness" && e("div", { className:"fade-in" },
+          aiLoading ? e("div", { style: { textAlign:"center", padding:"40px 0" } },
+            e("div", { className:"spinner", style: { margin:"0 auto 12px", borderTopColor:C.purple, borderColor:`${C.purple}30` } }),
+            e("p", { style: { color:C.muted, fontSize:13 } }, "Analysing your fit with Gemini AI...")
+          ) : !aiData ? e("div", { style: { textAlign:"center", padding:"40px 0" } },
+            e("div", { style: { fontSize:32, marginBottom:12 } }, "🔑"),
+            e("p", { style: { color:C.muted, fontSize:14, margin:0 } }, "Add your Gemini API key in the config to enable AI readiness analysis."),
+            e("p", { style: { color:C.lavender, fontSize:12, marginTop:8 } }, "Set GEMINI_API_KEY at the top of index.html")
+          ) : e("div", null,
+            e("div", { style: { background:C.lavenderBg, borderRadius:14, padding:"18px", marginBottom:16 } },
+              e("div", { style: { display:"flex", alignItems:"center", gap:8, marginBottom:10 } },
+                e(Icons.brain), e("span", { style: { fontWeight:700, color:C.purple, fontSize:14 } }, "AI Match Summary")
+              ),
+              e("p", { style: { margin:0, fontSize:14, color:C.charcoal, lineHeight:1.65 } }, aiData.summary)
+            ),
+            aiData.strengths?.length > 0 && e("div", { style: { marginBottom:16 } },
+              e("h4", { style: { margin:"0 0 10px", fontSize:13, fontWeight:700, color:C.success, textTransform:"uppercase", letterSpacing:"0.5px" } }, "✓ Your Strengths"),
+              aiData.strengths.map((s,i) => e("div", { key:i, style: { display:"flex", gap:8, alignItems:"flex-start", marginBottom:6, fontSize:13, color:C.charcoal } },
+                e("span", { style: { color:C.success, flexShrink:0, marginTop:2 } }, e(Icons.check)), s
+              ))
+            ),
+            aiData.skill_gaps?.length > 0 && e("div", { style: { marginBottom:16 } },
+              e("h4", { style: { margin:"0 0 10px", fontSize:13, fontWeight:700, color:C.error, textTransform:"uppercase", letterSpacing:"0.5px" } }, "⚠ Skill Gaps"),
+              aiData.skill_gaps.map((s,i) => e("div", { key:i, style: { display:"flex", gap:8, alignItems:"flex-start", marginBottom:6, fontSize:13, color:C.charcoal } },
+                e("span", { style: { color:C.error, flexShrink:0, marginTop:2 } }, "→"), s
+              ))
+            )
+          )
+        ),
+        tab === "interview" && e("div", { className:"fade-in" },
+          aiLoading ? e("div", { style: { textAlign:"center", padding:"40px 0" } },
+            e("div", { className:"spinner", style: { margin:"0 auto 12px", borderTopColor:C.purple, borderColor:`${C.purple}30` } }),
+            e("p", { style: { color:C.muted, fontSize:13 } }, "Generating interview questions...")
+          ) : !aiData ? e("div", { style: { textAlign:"center", padding:"40px 0" } },
+            e("div", { style: { fontSize:32, marginBottom:12 } }, "🎯"),
+            e("p", { style: { color:C.muted, fontSize:14 } }, "AI-generated interview questions require a Gemini API key.")
+          ) : e("div", null,
+            e("p", { style: { color:C.muted, fontSize:13, marginBottom:16 } }, "Role-specific questions generated by Gemini AI based on this job's requirements:"),
+            aiData.interview_questions?.map((q,i) => e("div", { key:i, style: { background:C.white, border:`1px solid ${C.border}`, borderRadius:12, padding:"14px 16px", marginBottom:10 } },
+              e("div", { style: { display:"flex", gap:10, alignItems:"flex-start" } },
+                e("span", { style: { width:24, height:24, borderRadius:6, background:C.lavenderBg, color:C.purple, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:800, flexShrink:0 } }, i+1),
+                e("p", { style: { margin:0, fontSize:13, color:C.charcoal, lineHeight:1.6 } }, q)
+              )
+            ))
+          )
+        )
+      )
+    )
+  );
+}
+
+// ─── Filter Bar ─────────────────────────────────────────────────────────────────
+function FilterBar({ filters, onChange }) {
+  const sel = (key, val) => onChange({ ...filters, [key]: val });
+  return e("div", { style: { background:C.white, borderRadius:14, border:`1px solid ${C.border}`, padding:"16px 20px", display:"flex", flexWrap:"wrap", gap:12, alignItems:"center", boxShadow:"0 2px 8px rgba(75,0,130,0.05)" } },
+    e("div", { style: { position:"relative", flex:"1 1 200px", minWidth:0 } },
+      e("span", { style: { position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:C.muted, zIndex:1 } }, e(Icons.search)),
+      e("input", { className:"search-input", placeholder:"Search jobs, companies...", value:filters.search||"", onChange:ev => sel("search", ev.target.value) })
+    ),
+    e("select", { className:"filter-select", style:{flex:"0 1 140px"}, value:filters.type||"", onChange:ev => sel("type", ev.target.value) },
+      e("option", {value:""}, "All Types"), e("option", {value:"Full-time"}, "Full-time"), e("option", {value:"Internship"}, "Internship"), e("option", {value:"Live Project"}, "Live Project")
+    ),
+    e("select", { className:"filter-select", style:{flex:"0 1 150px"}, value:filters.domain||"", onChange:ev => sel("domain", ev.target.value) },
+      e("option", {value:""}, "All Domains"), e("option", {value:"Consulting"}, "Consulting"), e("option", {value:"Finance"}, "Finance"), e("option", {value:"Marketing"}, "Marketing"), e("option", {value:"Operations"}, "Operations"), e("option", {value:"Tech"}, "Tech")
+    ),
+    e("select", { className:"filter-select", style:{flex:"0 1 140px"}, value:filters.readiness||"", onChange:ev => sel("readiness", ev.target.value) },
+      e("option", {value:""}, "All Readiness"), e("option", {value:"high"}, "✓ Strong Match"), e("option", {value:"medium"}, "~ Partial Match"), e("option", {value:"low"}, "! Skill Gap")
+    ),
+    e("select", { className:"filter-select", style:{flex:"0 1 130px"}, value:filters.sortBy||"match", onChange:ev => sel("sortBy", ev.target.value) },
+      e("option", {value:"match"}, "Best Match"), e("option", {value:"recent"}, "Most Recent"), e("option", {value:"salary"}, "Salary")
+    ),
+    (filters.search || filters.type || filters.domain || filters.readiness) && e("button", { onClick:() => onChange({ sortBy:"match" }), style: { padding:"10px 14px", border:`1.5px solid ${C.border}`, borderRadius:10, background:C.white, cursor:"pointer", color:C.muted, fontSize:12, fontWeight:600, whiteSpace:"nowrap" } }, "Clear")
+  );
+}
+
+// ─── Job Card ───────────────────────────────────────────────────────────────────
+function JobCard({ job, onView, isSaved, onSave, isApplied }) {
+  const readinessColor = job.readiness === "high" ? C.success : job.readiness === "medium" ? C.gold : C.error;
+  const score = job.match_score ?? 0;
+  return e("div", { className:"job-card", style: { background:C.white, borderRadius:16, border:`1px solid ${C.border}`, padding:"20px", boxShadow:"0 2px 8px rgba(75,0,130,0.05)", position:"relative", overflow:"hidden", cursor:"pointer" }, onClick:() => onView(job) },
+    e("div", { style: { position:"absolute", top:0, left:0, right:0, height:3, background:`linear-gradient(90deg, ${readinessColor}, ${readinessColor}80)` } }),
+    e("div", { style: { display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:12 } },
+      e("div", { style: { display:"flex", gap:10, alignItems:"center", flex:1, minWidth:0 } },
+        e("div", { style: { width:40, height:40, borderRadius:10, background:`${C.purple}12`, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, fontSize:15, color:C.purple, flexShrink:0 } }, (job.company||"?")[0]),
+        e("div", { style: { minWidth:0 } },
+          e("h3", { style: { margin:0, fontSize:14, fontWeight:700, color:C.charcoal, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" } }, job.title),
+          e("p", { style: { margin:"2px 0 0", fontSize:12, color:C.muted } }, job.company)
+        )
+      ),
+      e("div", { style: { display:"flex", flexDirection:"column", alignItems:"center", flexShrink:0, marginLeft:8 } },
+        e("div", { style: { width:42, height:42, borderRadius:"50%", border:`3px solid ${readinessColor}`, display:"flex", alignItems:"center", justifyContent:"center" } },
+          e("span", { style: { fontSize:11, fontWeight:900, color:readinessColor } }, score + "%")
+        )
+      )
+    ),
+    e("div", { style: { display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 } },
+      e("span", { style: { display:"inline-flex", alignItems:"center", gap:3, fontSize:11, color:C.muted } }, e(Icons.mapPin), " " + (job.location||"Remote")),
+      e("span", { style: { display:"inline-flex", alignItems:"center", gap:3, fontSize:11, color:C.muted } }, e(Icons.clock), " " + (job.type||"Full-time")),
+      job.salary_range && e("span", { style: { fontSize:11, color:C.success, fontWeight:600 } }, job.salary_range)
+    ),
+    job.skills?.length > 0 && e("div", { style: { display:"flex", flexWrap:"wrap", gap:4, marginBottom:12 } },
+      job.skills.slice(0,3).map((s,i) => e("span", { key:i, className:"pill", style:{fontSize:10, padding:"2px 8px"} }, s)),
+      job.skills.length > 3 && e("span", { className:"pill", style:{fontSize:10, padding:"2px 8px", background:"transparent", border:`1px solid ${C.border}`, color:C.muted} }, `+${job.skills.length-3}`)
+    ),
+    e("div", { style: { display:"flex", gap:8 } },
+      e("button", { onClick:ev => { ev.stopPropagation(); onView(job); }, style: { flex:1, background:C.purple, color:C.white, border:"none", borderRadius:8, padding:"9px 12px", fontWeight:600, fontSize:12, cursor:"pointer" } },
+        isApplied ? "✓ Applied" : "View Details"
+      ),
+      e("button", { onClick:ev => { ev.stopPropagation(); onSave(job); }, style: { padding:"9px 12px", border:`1.5px solid ${C.border}`, borderRadius:8, background:isSaved ? C.lavenderBg : C.white, cursor:"pointer", color:isSaved ? C.purple : C.muted } },
+        e(Icons.bookmark, isSaved)
+      )
+    )
+  );
+}
+
+// ─── Explore Opportunities Page ─────────────────────────────────────────────────
+function ExploreOpportunitiesPage({ user, onBack }) {
+  const [allJobs, setAllJobs] = useState([]);
+  const [loadingJobs, setLoadingJobs] = useState(true);
+  const [usingMockData, setUsingMockData] = useState(false);
+  const [filters, setFilters] = useState({ sortBy:"match" });
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [savedJobs, setSavedJobs] = useState([]);
+  const [appliedJobIds, setAppliedJobIds] = useState(new Set());
+  const [applications, setApplications] = useState([]);
+  const [studentProfile, setStudentProfile] = useState(null);
+  const [activeView, setActiveView] = useState("jobs"); // "jobs" | "saved" | "applied"
+
+  const displayName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Student";
+
+  // Load jobs + student data
+  useEffect(() => {
+    const load = async () => {
+      setLoadingJobs(true);
+      // Load student profile
+      try {
+        const { data: bp } = await sb.from("career_blueprints").select("*").eq("student_id", user.id).order("created_at", { ascending:false }).limit(1).maybeSingle();
+        setStudentProfile(bp?.report_data || null);
+      } catch {}
+      // Load saved jobs
+      try {
+        const { data: saved } = await sb.from("saved_jobs").select("*, jobs(*)").eq("student_id", user.id);
+        setSavedJobs(saved || []);
+      } catch {}
+      // Load applications
+      try {
+        const { data: apps } = await sb.from("applications").select("*, jobs(*)").eq("student_id", user.id);
+        setApplications(apps || []);
+        setAppliedJobIds(new Set((apps||[]).map(a => a.job_id)));
+      } catch {}
+      // Load jobs
+      try {
+        const { data: jobs, error } = await sb.from("jobs").select("*").eq("is_active", true).order("match_score", { ascending:false });
+        if (error || !jobs || jobs.length === 0) {
+          setAllJobs(MOCK_JOBS);
+          setUsingMockData(true);
+        } else {
+          setAllJobs(jobs);
+          setUsingMockData(false);
+        }
+      } catch {
+        setAllJobs(MOCK_JOBS);
+        setUsingMockData(true);
+      }
+      setLoadingJobs(false);
+    };
+    load();
+  }, [user.id]);
+
+  // Filter + sort jobs client-side
+  const filteredJobs = useMemo(() => {
+    let list = [...allJobs];
+    if (filters.search) {
+      const q = filters.search.toLowerCase();
+      list = list.filter(j => j.title?.toLowerCase().includes(q) || j.company?.toLowerCase().includes(q) || j.domain?.toLowerCase().includes(q) || j.skills?.some(s => s.toLowerCase().includes(q)));
+    }
+    if (filters.type) list = list.filter(j => j.type === filters.type);
+    if (filters.domain) list = list.filter(j => j.domain === filters.domain);
+    if (filters.readiness) list = list.filter(j => j.readiness === filters.readiness);
+    if (filters.sortBy === "match") list.sort((a,b) => (b.match_score||0)-(a.match_score||0));
+    else if (filters.sortBy === "recent") list.sort((a,b) => new Date(b.created_at||0)-new Date(a.created_at||0));
+    return list;
+  }, [allJobs, filters]);
+
+  const handleSave = async (job) => {
+    const alreadySaved = savedJobs.some(s => s.job_id === job.id);
+    if (alreadySaved) {
+      try { await sb.from("saved_jobs").delete().eq("student_id", user.id).eq("job_id", job.id); } catch {}
+      setSavedJobs(prev => prev.filter(s => s.job_id !== job.id));
+    } else {
+      try { await sb.from("saved_jobs").insert({ student_id: user.id, job_id: job.id }); } catch {}
+      setSavedJobs(prev => [...prev, { job_id: job.id, jobs: job }]);
+    }
+  };
+
+  const handleApply = async (job) => {
+    if (appliedJobIds.has(job.id)) return;
+    try { await sb.from("applications").insert({ student_id: user.id, job_id: job.id, status:"applied" }); } catch {}
+    setAppliedJobIds(prev => new Set([...prev, job.id]));
+    setApplications(prev => [...prev, { job_id: job.id, status:"applied", jobs: job, applied_at: new Date().toISOString() }]);
+  };
+
+  const savedJobIds = new Set(savedJobs.map(s => s.job_id));
+
+  return e("div", { style: { minHeight:"100vh", background:C.bgSec } },
+    // Navbar
+    e("nav", { style: { background:C.purple, padding:"0 28px", height:64, display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:100, boxShadow:"0 2px 20px rgba(75,0,130,0.35)" } },
+      e("div", { style: { display:"flex", alignItems:"center", gap:12 } },
+        e("button", { onClick:onBack, style: { background:"rgba(255,255,255,0.12)", border:"none", borderRadius:8, padding:"7px 10px", cursor:"pointer", color:C.white, display:"flex", alignItems:"center" } }, e(Icons.arrowLeft)),
+        e("div", { style: { width:38, height:38, background:C.gold, borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:900, fontSize:20, color:C.purple } }, "C"),
+        e("div", null,
+          e("div", { style: { color:C.white, fontWeight:800, fontSize:17, letterSpacing:"-0.3px" } }, "Explore Opportunities"),
+          e("div", { style: { color:C.lavender, fontSize:10, fontWeight:600, letterSpacing:"1px", textTransform:"uppercase" } }, "Jobs · Internships · Live Projects")
+        )
+      ),
+      e("div", { style: { display:"flex", alignItems:"center", gap:10 } },
+        [["jobs","Openings"], ["saved","Saved"], ["applied","Applied"]].map(([v,label]) =>
+          e("button", { key:v, onClick:() => setActiveView(v), style: { background:activeView===v ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.08)", border:"none", borderRadius:8, padding:"7px 14px", color:C.white, cursor:"pointer", fontSize:12, fontWeight:600 } },
+            label + (v==="saved" && savedJobs.length > 0 ? ` (${savedJobs.length})` : v==="applied" && applications.length > 0 ? ` (${applications.length})` : "")
+          )
+        )
+      )
+    ),
+    e("div", { style: { maxWidth:1200, margin:"0 auto", padding:"28px 24px" } },
+      // Hero Stats
+      e("div", { style: { display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(160px, 1fr))", gap:14, marginBottom:24 } },
+        [
+          { label:"Matched Openings", value:allJobs.length, color:C.purple },
+          { label:"Verified Recruiters", value:38, color:"#1D6A45" },
+          { label:"Applications Sent", value:applications.length, color:C.gold },
+          { label:"Saved Jobs", value:savedJobs.length, color:"#1E40AF" },
+        ].map((stat,i) => e("div", { key:i, style: { background:C.white, borderRadius:14, border:`1px solid ${C.border}`, padding:"16px 20px", boxShadow:"0 2px 8px rgba(75,0,130,0.05)" } },
+          e("div", { style: { fontSize:26, fontWeight:900, color:stat.color, letterSpacing:"-1px", fontFamily:"monospace" } }, stat.value),
+          e("div", { style: { fontSize:11, color:C.muted, fontWeight:600, marginTop:4, textTransform:"uppercase", letterSpacing:"0.5px" } }, stat.label)
+        ))
+      ),
+      usingMockData && e("div", { style: { background:"#FFFBEB", border:"1px solid #FDE68A", borderRadius:10, padding:"10px 16px", marginBottom:16, display:"flex", alignItems:"center", gap:10 } },
+        e("span", { style: { fontSize:14 } }, "⚠️"),
+        e("span", { style: { fontSize:13, color:"#92400E" } }, "Showing sample data. Run ", e("code", { style:{fontFamily:"monospace", background:"rgba(0,0,0,0.06)", padding:"1px 5px", borderRadius:4} }, "schema.sql"), " in Supabase to show real jobs.")
+      ),
+      // Main Content
+      activeView === "jobs" && e("div", null,
+        e(FilterBar, { filters, onChange:setFilters }),
+        e("div", { style: { marginTop:20 } },
+          loadingJobs ? e("div", { style: { textAlign:"center", padding:"60px 0" } },
+            e("div", { className:"spinner", style: { margin:"0 auto", borderTopColor:C.purple, borderColor:`${C.purple}30` } })
+          ) : filteredJobs.length === 0 ?
+            e("div", { style: { textAlign:"center", padding:"60px 0", color:C.muted } },
+              e("div", { style: { fontSize:36, marginBottom:12 } }, "🔍"),
+              e("p", { style: { fontSize:15, fontWeight:600 } }, "No jobs match your filters"),
+              e("p", { style: { fontSize:13, marginTop:6 } }, "Try clearing some filters to see more results.")
+            ) :
+            e("div", { style: { display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(280px, 1fr))", gap:16, marginTop:4 } },
+              filteredJobs.map(job => e(JobCard, { key:job.id, job, onView:setSelectedJob, isSaved:savedJobIds.has(job.id), onSave:handleSave, isApplied:appliedJobIds.has(job.id) }))
+            )
+        )
+      ),
+      activeView === "saved" && e("div", null,
+        savedJobs.length === 0 ?
+          e("div", { style: { textAlign:"center", padding:"60px 0", color:C.muted } },
+            e("div", { style: { fontSize:36, marginBottom:12 } }, "🔖"),
+            e("p", { style: { fontSize:15, fontWeight:600 } }, "No saved jobs yet"),
+            e("button", { onClick:() => setActiveView("jobs"), style: { marginTop:16, background:C.purple, color:C.white, border:"none", borderRadius:10, padding:"10px 20px", fontWeight:600, fontSize:14, cursor:"pointer" } }, "Browse Openings")
+          ) :
+          e("div", { style: { display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(280px, 1fr))", gap:16 } },
+            savedJobs.map(s => {
+              const job = s.jobs || s;
+              return e(JobCard, { key:job.id, job, onView:setSelectedJob, isSaved:true, onSave:handleSave, isApplied:appliedJobIds.has(job.id) });
+            })
+          )
+      ),
+      activeView === "applied" && e("div", null,
+        applications.length === 0 ?
+          e("div", { style: { textAlign:"center", padding:"60px 0", color:C.muted } },
+            e("div", { style: { fontSize:36, marginBottom:12 } }, "📋"),
+            e("p", { style: { fontSize:15, fontWeight:600 } }, "No applications yet"),
+            e("button", { onClick:() => setActiveView("jobs"), style: { marginTop:16, background:C.purple, color:C.white, border:"none", borderRadius:10, padding:"10px 20px", fontWeight:600, fontSize:14, cursor:"pointer" } }, "Explore Jobs")
+          ) :
+          e("div", { style: { display:"flex", flexDirection:"column", gap:12 } },
+            applications.map((app,i) => {
+              const job = app.jobs || { id:app.job_id, title:"Job" };
+              const statusColors = { applied:"#1E40AF", shortlisted:C.success, interviewing:C.gold, offered:C.success, rejected:C.error };
+              return e("div", { key:i, style: { background:C.white, borderRadius:14, border:`1px solid ${C.border}`, padding:"16px 20px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 } },
+                e("div", null,
+                  e("div", { style: { fontWeight:700, color:C.charcoal, fontSize:14 } }, job.title),
+                  e("div", { style: { color:C.muted, fontSize:12, marginTop:3 } }, job.company + (app.applied_at ? ` · Applied ${new Date(app.applied_at).toLocaleDateString("en-IN",{day:"numeric",month:"short"})}` : ""))
+                ),
+                e("span", { style: { background:`${statusColors[app.status]||C.muted}15`, color:statusColors[app.status]||C.muted, borderRadius:20, padding:"4px 12px", fontSize:11, fontWeight:700, textTransform:"capitalize", whiteSpace:"nowrap" } }, app.status)
+              );
+            })
+          )
+      )
+    ),
+    selectedJob && e(JobDetailDrawer, {
+      job: selectedJob,
+      onClose: () => setSelectedJob(null),
+      studentId: user.id,
+      studentProfile,
+      savedJobs: savedJobs,
+      onSave: handleSave,
+      onApply: handleApply,
+      appliedJobIds,
+    })
+  );
+}
+
 // ─── Dashboard ──────────────────────────────────────────────────────────────────
 function Dashboard({ user, onLogout }) {
+  const [view, setView] = useState("home"); // "home" | "opportunities"
   const [blueprint, setBlueprint] = useState(null);
   const [careerDiscoveryDone, setCareerDiscoveryDone] = useState(false);
   const [resumeDone, setResumeDone] = useState(false);
   const [interviewDone, setInterviewDone] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
-  const e = React.createElement;
 
   const displayName = (user.user_metadata?.name || user.email?.split("@")[0] || "Student");
   const firstName = displayName.split(" ")[0];
@@ -233,62 +699,37 @@ function Dashboard({ user, onLogout }) {
   useEffect(() => {
     const load = async () => {
       try {
-        // Check campus2board_sessions: if report is NOT NULL, Career Discovery is complete
-        const { data: sessionData } = await sb.from("campus2board_sessions")
-          .select("report")
-          .eq("user_id", user.id)
-          .maybeSingle();
-        if (sessionData && sessionData.report !== null) {
-          setCareerDiscoveryDone(true);
-        }
-      } catch(err) {}
+        const { data: sessionData } = await sb.from("campus2board_sessions").select("report").eq("user_id", user.id).maybeSingle();
+        if (sessionData && sessionData.report !== null) setCareerDiscoveryDone(true);
+      } catch {}
       try {
         const { data } = await sb.from("career_blueprints").select("*").eq("student_id", user.id).order("created_at", { ascending:false }).limit(1).maybeSingle();
         setBlueprint(data);
-      } catch(err) {}
+      } catch {}
       try {
-        // Check campus2board_resume: query by user_id (text) OR student_id (text)
-        // Both columns are type text, so cast user.id to string explicitly
         const userId = String(user.id);
         let resumeData = null;
-        const { data: r1 } = await sb.from("campus2board_resume")
-          .select("resume_downloaded, downloaded_pdf, downloaded_word")
-          .eq("user_id", userId)
-          .maybeSingle();
-        if (r1) { resumeData = r1; }
+        const { data: r1 } = await sb.from("campus2board_resume").select("resume_downloaded, downloaded_pdf, downloaded_word").eq("user_id", userId).maybeSingle();
+        if (r1) resumeData = r1;
         if (!resumeData) {
-          const { data: r2 } = await sb.from("campus2board_resume")
-            .select("resume_downloaded, downloaded_pdf, downloaded_word")
-            .eq("student_id", userId)
-            .maybeSingle();
-          if (r2) { resumeData = r2; }
+          const { data: r2 } = await sb.from("campus2board_resume").select("resume_downloaded, downloaded_pdf, downloaded_word").eq("student_id", userId).maybeSingle();
+          if (r2) resumeData = r2;
         }
-        if (resumeData && (
-          resumeData.resume_downloaded !== null ||
-          resumeData.downloaded_pdf === true ||
-          resumeData.downloaded_word === true
-        )) {
-          setResumeDone(true);
-        }
-      } catch(err) {}
+        if (resumeData && (resumeData.resume_downloaded !== null || resumeData.downloaded_pdf === true || resumeData.downloaded_word === true)) setResumeDone(true);
+      } catch {}
       try {
-        // Check student_reports: any row with overall_feedback NOT NULL means interview done
-        const { data: reportData } = await sb.from("student_reports")
-          .select("overall_feedback")
-          .eq("student_id", user.id)
-          .not("overall_feedback", "is", null)
-          .limit(1)
-          .maybeSingle();
-        if (reportData) {
-          setInterviewDone(true);
-        }
-      } catch(err) {}
+        const { data: reportData } = await sb.from("student_reports").select("overall_feedback").eq("student_id", user.id).not("overall_feedback", "is", null).limit(1).maybeSingle();
+        if (reportData) setInterviewDone(true);
+      } catch {}
       setLoadingData(false);
     };
     load();
   }, [user.id]);
 
+  if (view === "opportunities") return e(ExploreOpportunitiesPage, { user, onBack:() => setView("home") });
+
   const handleModuleClick = async (modId) => {
+    if (modId === "opportunities") { setView("opportunities"); return; }
     const { data: { session } } = await sb.auth.getSession();
     const p = new URLSearchParams({ name:displayName, email:user.email||"", college, student_id:user.id });
     let baseUrl;
@@ -303,10 +744,8 @@ function Dashboard({ user, onLogout }) {
   };
 
   const hasBlueprint = !!blueprint;
-  const fitScore = blueprint?.recommendation_confidence || (blueprint?.report_data?.recommendationConfidence) || 0;
+  const fitScore = blueprint?.recommendation_confidence || blueprint?.report_data?.recommendationConfidence || 0;
   const topMatches = blueprint?.report_data?.topCareerMatches || [];
-
-  // Career Discovery complete if sessions.report is NOT NULL OR a blueprint exists
   const isCareerDiscoveryComplete = careerDiscoveryDone || hasBlueprint;
 
   const progressSteps = [
@@ -320,8 +759,7 @@ function Dashboard({ user, onLogout }) {
 
   return e("div", { style: { minHeight:"100vh", background:C.bgSec } },
     // Navbar
-    e("nav", { style: { background:C.purple, padding:"0 28px", height:64, display:"flex", alignItems:"center", justifyContent:"space-between",
-      position:"sticky", top:0, zIndex:100, boxShadow:"0 2px 20px rgba(75,0,130,0.35)" } },
+    e("nav", { style: { background:C.purple, padding:"0 28px", height:64, display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:100, boxShadow:"0 2px 20px rgba(75,0,130,0.35)" } },
       e("div", { style: { display:"flex", alignItems:"center", gap:12 } },
         e("div", { style: { width:38, height:38, background:C.gold, borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:900, fontSize:20, color:C.purple } }, "C"),
         e("div", null,
@@ -334,138 +772,94 @@ function Dashboard({ user, onLogout }) {
           e("div", { style: { color:C.white, fontSize:14, fontWeight:600 } }, displayName),
           college && e("div", { style: { color:C.lavender, fontSize:11 } }, college)
         ),
-        e("button", { onClick:onLogout, style: { background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:8,
-          padding:"7px 14px", color:C.white, cursor:"pointer", display:"flex", alignItems:"center", gap:7, fontSize:13, fontWeight:500 } },
-          e(Icons.logout), "Sign Out"
-        )
+        e("button", { onClick:onLogout, style: { background:"rgba(255,255,255,0.1)", border:"none", borderRadius:8, padding:"8px 14px", color:C.white, cursor:"pointer", display:"flex", alignItems:"center", gap:6, fontSize:13, fontWeight:500 } }, e(Icons.logout), " Sign Out")
       )
     ),
-
-    e("div", { style: { maxWidth:1120, margin:"0 auto", padding:"36px 24px" } },
-
-      // ── Hero Banner ─────────────────────────────────────────────────────────
-      e("div", { className:"fade-in", style: { background:`linear-gradient(135deg, ${C.purple} 0%, ${C.purpleLight} 60%, #5B21B6 100%)`,
-        borderRadius:24, padding:"36px 40px", marginBottom:36, position:"relative", overflow:"hidden" } },
-        e("div", { style: { position:"absolute", top:-60, right:-60, width:280, height:280, borderRadius:"50%", background:"rgba(245,158,11,0.1)" } }),
-        e("div", { style: { position:"absolute", bottom:-80, right:140, width:200, height:200, borderRadius:"50%", background:"rgba(127,107,179,0.15)" } }),
+    e("div", { style: { maxWidth:1100, margin:"0 auto", padding:"32px 24px" } },
+      // Welcome Banner
+      e("div", { style: { background:`linear-gradient(135deg, ${C.purple} 0%, #6A0DAD 100%)`, borderRadius:20, padding:"32px 36px", marginBottom:32, position:"relative", overflow:"hidden" } },
+        e("div", { style: { position:"absolute", top:-40, right:-40, width:200, height:200, borderRadius:"50%", background:"rgba(245,158,11,0.15)" } }),
+        e("div", { style: { position:"absolute", bottom:-60, right:100, width:160, height:160, borderRadius:"50%", background:"rgba(127,107,179,0.2)" } }),
         e("div", { style: { position:"relative", zIndex:1 } },
-          e("div", { style: { display:"flex", alignItems:"flex-start", justifyContent:"space-between", flexWrap:"wrap", gap:24 } },
+          e("div", { style: { display:"flex", alignItems:"flex-start", justifyContent:"space-between", flexWrap:"wrap", gap:20 } },
             e("div", null,
-              e("p", { style: { color:C.gold, fontSize:12, fontWeight:700, letterSpacing:"1.5px", textTransform:"uppercase", margin:"0 0 10px" } }, "Welcome back"),
-              e("h1", { style: { color:C.white, fontSize:26, fontWeight:900, margin:"0 0 10px", letterSpacing:"-0.5px", lineHeight:1.2 } },
-                `${firstName}, build your career with confidence.`
-              ),
-              e("p", { style: { color:"rgba(255,255,255,0.6)", fontSize:14, margin:0, maxWidth:460, lineHeight:1.6 } },
-                interviewDone
-                  ? "Great progress! You've completed Interview Training. Explore open opportunities to apply with your validated profile."
-                  : resumeDone
-                    ? "Resume done! Complete AI Interview Training next to strengthen your application."
-                    : isCareerDiscoveryComplete
-                      ? "Career Discovery complete! Upload your CV next to keep building your profile."
-                      : "Start with Career Discovery — a 15-minute AI assessment that maps your strengths to the right MBA roles."
+              e("p", { style: { color:C.gold, fontSize:13, fontWeight:600, letterSpacing:"1px", textTransform:"uppercase", margin:"0 0 8px" } }, "Welcome back"),
+              e("h1", { style: { color:C.white, fontSize:28, fontWeight:800, margin:"0 0 8px", letterSpacing:"-0.5px" } }, firstName + ", your career journey starts here."),
+              e("p", { style: { color:"rgba(255,255,255,0.65)", fontSize:15, margin:0, maxWidth:480 } },
+                interviewDone ? "Great progress! Explore open opportunities to apply with your validated profile." :
+                resumeDone ? "Resume done! Complete AI Interview Training next to strengthen your application." :
+                isCareerDiscoveryComplete ? "Career Discovery complete! Upload your CV next to keep building your profile." :
+                "Begin with Career Discovery to get your personalised Career Blueprint and role recommendations."
               )
             ),
-            hasBlueprint && fitScore > 0 && e("div", { style: { background:"rgba(255,255,255,0.1)", backdropFilter:"blur(12px)",
-              borderRadius:18, padding:"22px 32px", textAlign:"center", border:"1px solid rgba(255,255,255,0.15)", flexShrink:0 } },
-              e("div", { style: { color:C.gold, fontSize:42, fontWeight:900, lineHeight:1, fontFamily:"monospace" } }, fitScore + "%"),
+            hasBlueprint && e("div", { style: { background:"rgba(255,255,255,0.1)", borderRadius:16, padding:"20px 28px", textAlign:"center", backdropFilter:"blur(10px)", border:"1px solid rgba(255,255,255,0.15)" } },
+              e("div", { style: { color:C.gold, fontSize:36, fontWeight:900, lineHeight:1, fontFamily:"monospace" } }, fitScore + "%"),
               e("div", { style: { color:"rgba(255,255,255,0.6)", fontSize:11, fontWeight:700, marginTop:5, letterSpacing:"0.8px", textTransform:"uppercase" } }, "Career Fit Score")
             )
           ),
-
-          // Progress
           e("div", { style: { marginTop:28 } },
             e("div", { style: { display:"flex", justifyContent:"space-between", marginBottom:7 } },
               e("span", { style: { color:"rgba(255,255,255,0.55)", fontSize:11, fontWeight:700, letterSpacing:"0.8px", textTransform:"uppercase" } }, "Profile Completion"),
-              e("span", { style: { color:C.gold, fontSize:12, fontWeight:800 } }, `${progressPct}%`)
+              e("span", { style: { color:C.gold, fontSize:12, fontWeight:800 } }, progressPct + "%")
             ),
             e("div", { style: { background:"rgba(255,255,255,0.12)", borderRadius:100, height:8, overflow:"hidden" } },
-              e("div", { style: { background:`linear-gradient(90deg, ${C.gold}, ${C.goldLight})`, height:"100%", width:`${progressPct}%`, borderRadius:100, transition:"width 1.2s ease" } })
+              e("div", { style: { background:`linear-gradient(90deg, ${C.gold}, ${C.goldLight})`, height:"100%", width:progressPct+"%", borderRadius:100, transition:"width 1.2s ease" } })
             ),
             e("div", { style: { display:"flex", gap:20, marginTop:12, flexWrap:"wrap" } },
-              progressSteps.map((s,i) => e("div", { key:i, style: { display:"flex", alignItems:"center", gap:6,
-                color:s.done ? C.gold : "rgba(255,255,255,0.35)", fontSize:11, fontWeight:600 } },
-                e("div", { style: { width:16, height:16, borderRadius:"50%", background:s.done ? C.gold : "rgba(255,255,255,0.15)",
-                  display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, color:s.done ? C.purple : "transparent", fontWeight:900 } }, s.done ? "✓" : ""),
+              progressSteps.map((s,i) => e("div", { key:i, style: { display:"flex", alignItems:"center", gap:6, color:s.done ? C.gold : "rgba(255,255,255,0.35)", fontSize:11, fontWeight:600 } },
+                e("div", { style: { width:16, height:16, borderRadius:"50%", background:s.done ? C.gold : "rgba(255,255,255,0.15)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:9, color:s.done ? C.purple : "transparent", fontWeight:900 } }, s.done ? "✓" : ""),
                 s.label
               ))
             )
           )
         )
       ),
-
-      // ── Blueprint Preview ──────────────────────────────────────────────────
-      hasBlueprint && topMatches.length > 0 && e("div", { className:"fade-in",
-        style: { background:C.white, borderRadius:18, border:`1px solid ${C.border}`, padding:28,
-          marginBottom:32, borderLeft:`5px solid ${C.gold}`, boxShadow:"0 2px 12px rgba(75,0,130,0.06)" } },
+      // Blueprint Preview
+      hasBlueprint && topMatches.length > 0 && e("div", { className:"fade-in", style: { background:C.white, borderRadius:18, border:`1px solid ${C.border}`, padding:28, marginBottom:32, borderLeft:`5px solid ${C.gold}`, boxShadow:"0 2px 12px rgba(75,0,130,0.06)" } },
         e("div", { style: { display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20, flexWrap:"wrap", gap:12 } },
           e("div", null,
             e("h3", { style: { margin:0, fontSize:17, fontWeight:800, color:C.charcoal } }, "Your Career Blueprint"),
-            e("p", { style: { margin:"4px 0 0", fontSize:13, color:C.muted } },
-              `Generated ${new Date(blueprint.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})}`
-            )
+            e("p", { style: { margin:"4px 0 0", fontSize:13, color:C.muted } }, `Generated ${new Date(blueprint.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})}`)
           ),
-          e("button", { onClick:() => handleModuleClick("career-discovery"), style: { background:"transparent", color:C.purple, border:`2px solid ${C.purple}`,
-            borderRadius:10, padding:"9px 18px", fontWeight:600, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", gap:6 } },
-            "View Full Report ", e(Icons.chevron))
+          e("button", { onClick:() => handleModuleClick("career-discovery"), style: { background:"transparent", color:C.purple, border:`2px solid ${C.purple}`, borderRadius:10, padding:"9px 18px", fontWeight:600, fontSize:13, cursor:"pointer" } }, "View Full Report →")
         ),
         e("div", { style: { display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))", gap:14 } },
-          topMatches.slice(0,3).map((m,i) => e("div", { key:i,
-            style: { background:C.lavenderBg, borderRadius:12, padding:"16px 18px", border:`1px solid ${C.border}` } },
-            e("div", { style: { display:"flex", alignItems:"center", gap:5, marginBottom:6 } },
-              e(Icons.star), e("span", { style: { fontSize:10, fontWeight:700, color:C.purple, textTransform:"uppercase", letterSpacing:"0.5px" } }, m.domain)
-            ),
+          topMatches.slice(0,3).map((m,i) => e("div", { key:i, style: { background:C.lavenderBg, borderRadius:12, padding:"16px 18px", border:`1px solid ${C.border}` } },
+            e("div", { style: { display:"flex", alignItems:"center", gap:5, marginBottom:6 } }, e(Icons.star), e("span", { style: { fontSize:10, fontWeight:700, color:C.purple, textTransform:"uppercase", letterSpacing:"0.5px" } }, m.domain)),
             e("div", { style: { fontSize:14, fontWeight:700, color:C.charcoal, marginBottom:4 } }, m.roleTitle),
             e("div", { style: { fontSize:24, fontWeight:900, color:C.purple, fontFamily:"monospace" } }, `${m.careerFitScore}%`),
             e("div", { style: { fontSize:11, color:C.muted, marginTop:2 } }, "Career Fit")
           ))
         )
       ),
-
-      // ── Module Cards ────────────────────────────────────────────────────────
+      // Module Cards
       e("h2", { style: { fontSize:20, fontWeight:800, color:C.charcoal, margin:"0 0 20px", letterSpacing:"-0.3px" } }, "Your Learning Modules"),
       e("div", { style: { display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(310px, 1fr))", gap:20 } },
         MODULES.map(mod => {
           const ModIcon = Icons[mod.icon];
           return e("div", { key:mod.id, className:`module-card ${mod.live ? "live" : ""}`,
-            // UPDATED: Dynamic routing based on module ID
             onClick:() => mod.live && handleModuleClick(mod.id),
-            style: { background:C.white, borderRadius:18, border:`1px solid ${C.border}`, padding:28,
-              cursor:mod.live ? "pointer" : "default", position:"relative", overflow:"hidden",
-              boxShadow:"0 2px 8px rgba(75,0,130,0.05)", opacity:mod.live ? 1 : 0.82 } },
-            // Top accent
-            e("div", { style: { position:"absolute", top:0, left:0, right:0, height:4,
-              background:mod.live ? `linear-gradient(90deg, ${mod.color}, ${mod.accent})` : C.border, borderRadius:"18px 18px 0 0" } }),
-            // Header
+            style: { background:C.white, borderRadius:18, border:`1px solid ${C.border}`, padding:28, cursor:mod.live ? "pointer" : "default", position:"relative", overflow:"hidden", boxShadow:"0 2px 8px rgba(75,0,130,0.05)", opacity:mod.live ? 1 : 0.82 } },
+            e("div", { style: { position:"absolute", top:0, left:0, right:0, height:4, background:mod.live ? `linear-gradient(90deg, ${mod.color}, ${mod.accent})` : C.border, borderRadius:"18px 18px 0 0" } }),
             e("div", { style: { display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:18, paddingTop:6 } },
               e("div", { style: { display:"flex", alignItems:"center", gap:12 } },
-                e("div", { style: { width:46, height:46, borderRadius:13, background:`${mod.color}12`,
-                  display:"flex", alignItems:"center", justifyContent:"center", color:mod.color } }, e(ModIcon)),
+                e("div", { style: { width:46, height:46, borderRadius:13, background:`${mod.color}12`, display:"flex", alignItems:"center", justifyContent:"center", color:mod.color } }, e(ModIcon)),
                 e("span", { style: { fontSize:30, fontWeight:900, color:`${mod.color}18`, fontFamily:"monospace", lineHeight:1 } }, mod.num)
               ),
-              e("span", { style: { display:"inline-flex", alignItems:"center", background:`${mod.badgeColor}14`,
-                color:mod.badgeColor, borderRadius:20, padding:"4px 12px", fontSize:11, fontWeight:700, letterSpacing:"0.3px" } }, mod.badge)
+              e("span", { style: { display:"inline-flex", alignItems:"center", background:`${mod.badgeColor}14`, color:mod.badgeColor, borderRadius:20, padding:"4px 12px", fontSize:11, fontWeight:700, letterSpacing:"0.3px" } }, mod.badge)
             ),
             e("h3", { style: { margin:"0 0 4px", fontSize:16, fontWeight:800, color:C.charcoal, letterSpacing:"-0.2px" } }, mod.title),
             e("p", { style: { margin:"0 0 12px", fontSize:11, fontWeight:700, color:mod.color, textTransform:"uppercase", letterSpacing:"0.6px" } }, mod.sub),
             e("p", { style: { margin:"0 0 22px", fontSize:13.5, color:C.muted, lineHeight:1.65 } }, mod.desc),
-            
-            // UPDATED: Dynamic routing for the button click
             e("button", { onClick:ev => { ev.stopPropagation(); mod.live && handleModuleClick(mod.id); }, disabled:!mod.live,
-              style: { background:mod.live ? C.purple : C.border, color:mod.live ? C.white : C.muted, border:"none",
-                borderRadius:10, padding:"11px 20px", fontWeight:600, fontSize:13, cursor:mod.live ? "pointer" : "not-allowed",
-                width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:8 } },
+              style: { background:mod.live ? C.purple : C.border, color:mod.live ? C.white : C.muted, border:"none", borderRadius:10, padding:"11px 20px", fontWeight:600, fontSize:13, cursor:mod.live ? "pointer" : "not-allowed", width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:8 } },
               mod.live ? [mod.cta, e(Icons.chevron)] : "Coming Soon"
             )
           );
         })
       ),
-
-      // Footer
       e("div", { style: { textAlign:"center", marginTop:52, paddingBottom:24 } },
-        e("p", { style: { color:C.muted, fontSize:13 } },
-          "Campus2Board · MBA Career Readiness Platform · ",
-          e("span", { style: { color:C.purple, fontWeight:700 } }, "app.campus2board.com")
-        )
+        e("p", { style: { color:C.muted, fontSize:13 } }, "Campus2Board · MBA Career Readiness Platform · ", e("span", { style: { color:C.purple, fontWeight:700 } }, "app.campus2board.com"))
       )
     )
   );
@@ -475,7 +869,6 @@ function Dashboard({ user, onLogout }) {
 function App() {
   const [user, setUser] = useState(null);
   const [checking, setChecking] = useState(true);
-  const e = React.createElement;
 
   useEffect(() => {
     sb.auth.getSession().then(({ data:{ session } }) => { setUser(session?.user ?? null); setChecking(false); });
@@ -485,8 +878,7 @@ function App() {
 
   if (checking) return e("div", { style: { minHeight:"100vh", background:C.purple, display:"flex", alignItems:"center", justifyContent:"center" } },
     e("div", { style: { textAlign:"center" } },
-      e("div", { style: { width:52, height:52, background:C.gold, borderRadius:14, display:"flex", alignItems:"center", justifyContent:"center",
-        fontWeight:900, fontSize:24, color:C.purple, margin:"0 auto 16px" } }, "C"),
+      e("div", { style: { width:52, height:52, background:C.gold, borderRadius:14, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:900, fontSize:24, color:C.purple, margin:"0 auto 16px" } }, "C"),
       e("div", { className:"spinner", style: { margin:"0 auto" } })
     )
   );
