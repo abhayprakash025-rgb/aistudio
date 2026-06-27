@@ -276,6 +276,8 @@ function Dashboard({ user, onLogout }) {
   const [studentData, setStudentData] = useState(null);
   const [blueprint, setBlueprint] = useState(null);
   const [careerDiscoveryDone, setCareerDiscoveryDone] = useState(false);
+  const [resumeDone, setResumeDone] = useState(false);
+  const [interviewDone, setInterviewDone] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const displayName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Student";
@@ -298,6 +300,28 @@ function Dashboard({ user, onLogout }) {
 
         const { data: bp } = await supabase.from("career_blueprints").select("*").eq("student_id", user.id).order("created_at", { ascending: false }).limit(1).single();
         setBlueprint(bp);
+      } catch (e) { /* no data yet */ }
+      try {
+        // Check campus2board_resume: resume_downloaded NOT NULL means CV step is done
+        const { data: resumeData } = await supabase.from("campus2board_resume")
+          .select("resume_downloaded")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (resumeData && resumeData.resume_downloaded !== null) {
+          setResumeDone(true);
+        }
+      } catch (e) { /* no data yet */ }
+      try {
+        // Check student_reports: any row with overall_feedback NOT NULL means interview done
+        const { data: reportData } = await supabase.from("student_reports")
+          .select("overall_feedback")
+          .eq("student_id", user.id)
+          .not("overall_feedback", "is", null)
+          .limit(1)
+          .maybeSingle();
+        if (reportData) {
+          setInterviewDone(true);
+        }
       } catch (e) { /* no data yet */ }
       setLoading(false);
     };
@@ -390,7 +414,7 @@ const handleModuleClick = async (mod) => {
                 <div style={{ background: `linear-gradient(90deg, ${C.gold}, ${C.goldLight})`, height: "100%", width: isCareerDiscoveryComplete ? "40%" : "20%", borderRadius: 100, transition: "width 1s ease" }} />
               </div>
               <div style={{ display: "flex", gap: 16, marginTop: 10, flexWrap: "wrap" }}>
-                {[{ label: "Profile Created", done: true }, { label: "Career Discovery", done: isCareerDiscoveryComplete }, { label: "Resume Builder", done: false }, { label: "Interview Training", done: false }, { label: "Applied to Role", done: false }].map((step, i) => (
+                {[{ label: "Profile Created", done: true }, { label: "Career Discovery", done: isCareerDiscoveryComplete }, { label: "Resume Builder", done: resumeDone }, { label: "Interview Training", done: interviewDone }, { label: "Applied to Role", done: false }].map((step, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: 5, color: step.done ? C.gold : "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: 600 }}>
                     <span style={{ width: 14, height: 14, borderRadius: "50%", background: step.done ? C.gold : "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8 }}>
                       {step.done && "✓"}
