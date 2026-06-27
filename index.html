@@ -356,11 +356,13 @@ function Dashboard({ user, onLogout }) {
                 `${firstName}, build your career with confidence.`
               ),
               e("p", { style: { color:"rgba(255,255,255,0.6)", fontSize:14, margin:0, maxWidth:460, lineHeight:1.6 } },
-                hasBlueprint
-                  ? "Your Career Blueprint is ready. Continue building your profile to unlock all 5 modules."
-                  : isCareerDiscoveryComplete
-                    ? "Career Discovery complete! Upload your CV next to keep building your profile."
-                    : "Start with Career Discovery — a 15-minute AI assessment that maps your strengths to the right MBA roles."
+                interviewDone
+                  ? "Great progress! You've completed Interview Training. Explore open opportunities to apply with your validated profile."
+                  : resumeDone
+                    ? "Resume done! Complete AI Interview Training next to strengthen your application."
+                    : isCareerDiscoveryComplete
+                      ? "Career Discovery complete! Upload your CV next to keep building your profile."
+                      : "Start with Career Discovery — a 15-minute AI assessment that maps your strengths to the right MBA roles."
               )
             ),
             hasBlueprint && fitScore > 0 && e("div", { style: { background:"rgba(255,255,255,0.1)", backdropFilter:"blur(12px)",
