@@ -476,7 +476,7 @@ function JobDetailDrawer({ job, onClose, studentId, studentProfile, savedJobs, o
 }
 
 // ─── Filter Bar ─────────────────────────────────────────────────────────────────
-function FilterBar({ filters, onChange, availableDomains }) {
+function FilterBar({ filters, onChange, availableDomains, availableLocations }) {
   const sel = (key, val) => onChange({ ...filters, [key]: val });
   return e("div", { style: { background:C.white, borderRadius:14, border:`1px solid ${C.border}`, padding:"16px 20px", display:"flex", flexWrap:"wrap", gap:12, alignItems:"center", boxShadow:"0 2px 8px rgba(75,0,130,0.05)" } },
     e("div", { style: { position:"relative", flex:"1 1 200px", minWidth:0 } },
@@ -494,15 +494,22 @@ function FilterBar({ filters, onChange, availableDomains }) {
       e("option", {value:""}, "All Domains"),
       (availableDomains||[]).map(d => e("option", { key:d, value:d }, d))
     ),
+    // Location options, same dynamic-from-DB pattern as domain — job
+    // locations are free text ("City, State"), so this lists exact distinct
+    // values present rather than guessing at a fixed taxonomy.
+    e("select", { className:"filter-select", style:{flex:"0 1 170px"}, value:filters.location||"", onChange:ev => sel("location", ev.target.value) },
+      e("option", {value:""}, "All Locations"),
+      (availableLocations||[]).map(l => e("option", { key:l, value:l }, l))
+    ),
     e("select", { className:"filter-select", style:{flex:"0 1 150px"}, value:filters.readiness||"", onChange:ev => sel("readiness", ev.target.value) },
       e("option", {value:""}, "All Matches"),
       e("option", {value:"high"}, "✓ Strong Match"),
       e("option", {value:"medium"}, "~ Partial Match")
     ),
-    e("select", { className:"filter-select", style:{flex:"0 1 130px"}, value:filters.sortBy||"recent", onChange:ev => sel("sortBy", ev.target.value) },
-      e("option", {value:"recent"}, "Most Recent"), e("option", {value:"older"}, "Older")
+    e("select", { className:"filter-select", style:{flex:"0 1 140px"}, value:filters.sortBy||"match", onChange:ev => sel("sortBy", ev.target.value) },
+      e("option", {value:"match"}, "Best Match"), e("option", {value:"recent"}, "Most Recent"), e("option", {value:"older"}, "Older")
     ),
-    (filters.search || filters.type || filters.domain || filters.readiness) && e("button", { onClick:() => onChange({ sortBy:"recent" }), style: { padding:"10px 14px", border:`1.5px solid ${C.border}`, borderRadius:10, background:C.white, cursor:"pointer", color:C.muted, fontSize:12, fontWeight:600, whiteSpace:"nowrap" } }, "Clear")
+    (filters.search || filters.type || filters.domain || filters.location || filters.readiness) && e("button", { onClick:() => onChange({ sortBy:"match" }), style: { padding:"10px 14px", border:`1.5px solid ${C.border}`, borderRadius:10, background:C.white, cursor:"pointer", color:C.muted, fontSize:12, fontWeight:600, whiteSpace:"nowrap" } }, "Clear")
   );
 }
 
@@ -562,7 +569,7 @@ function ExploreOpportunitiesPage({ user, onBack }) {
   const [allJobs, setAllJobs] = useState([]);
   const [loadingJobs, setLoadingJobs] = useState(true);
   const [usingMockData, setUsingMockData] = useState(false);
-  const [filters, setFilters] = useState({ sortBy:"recent" });
+  const [filters, setFilters] = useState({ sortBy:"match" });
   const [selectedJob, setSelectedJob] = useState(null);
   const [savedJobs, setSavedJobs] = useState([]);
   const [appliedJobIds, setAppliedJobIds] = useState(new Set());
@@ -648,7 +655,7 @@ function ExploreOpportunitiesPage({ user, onBack }) {
         .select("*")
         .eq("is_active", true)
         .gte("posted_at", fifteenDaysAgo.toISOString())
-        .order("posted_at", { ascending: false });
+        .order("match_score", { ascending: false });
       if (!error && jobs && jobs.length > 0) {
         // Recompute readiness from match_score
         const enriched = jobs.map(j => {
@@ -736,6 +743,13 @@ function ExploreOpportunitiesPage({ user, onBack }) {
     return [...new Set(allJobs.map(j => j.domain).filter(Boolean))].sort();
   }, [allJobs]);
 
+  // Location options, same dynamic-from-DB approach. Locations are free text
+  // ("Bengaluru, Karnataka", "Remote", "India") so we just list exact
+  // distinct values rather than trying to bucket by city/state.
+  const availableLocations = useMemo(() => {
+    return [...new Set(allJobs.map(j => j.location).filter(Boolean))].sort();
+  }, [allJobs]);
+
   // Filter + sort jobs client-side
   const filteredJobs = useMemo(() => {
     let list = [...allJobs];
@@ -745,6 +759,7 @@ function ExploreOpportunitiesPage({ user, onBack }) {
     }
     if (filters.type) list = list.filter(j => j.type === filters.type);
     if (filters.domain) list = list.filter(j => j.domain === filters.domain);
+    if (filters.location) list = list.filter(j => j.location === filters.location);
     if (filters.readiness) {
       list = list.filter(j => {
         // Compute readiness from match_score if readiness field is missing/stale
@@ -761,13 +776,19 @@ function ExploreOpportunitiesPage({ user, onBack }) {
         if (aRecent !== bRecent) return aRecent ? 1 : -1; // older bucket first
         return new Date(a.posted_at || a.created_at || 0).getTime() - new Date(b.posted_at || b.created_at || 0).getTime();
       });
-    } else {
-      // Most Recent (default): newest first, recent-bucket jobs surfaced first
+    } else if (filters.sortBy === "recent") {
+      // Most Recent: newest first, recent-bucket jobs surfaced first
       list.sort((a,b) => {
         const aRecent = isRecent(a), bRecent = isRecent(b);
         if (aRecent !== bRecent) return aRecent ? -1 : 1;
         return new Date(b.posted_at || b.created_at || 0).getTime() - new Date(a.posted_at || a.created_at || 0).getTime();
       });
+    } else {
+      // Best Match (default): highest personalized/match score first. This is
+      // exactly the personalized_score the match_jobs_for_student SQL function
+      // computes — surfacing it here is the whole point of personalization,
+      // so this stays the default rather than recency.
+      list.sort((a,b) => (b.match_score||0) - (a.match_score||0));
     }
     return list;
   }, [allJobs, filters]);
@@ -874,7 +895,7 @@ function ExploreOpportunitiesPage({ user, onBack }) {
       ),
       // Main Content
       activeView === "jobs" && e("div", null,
-        e(FilterBar, { filters, onChange:setFilters, availableDomains }),
+        e(FilterBar, { filters, onChange:setFilters, availableDomains, availableLocations }),
         e("div", { style: { marginTop:20 } },
           loadingJobs ? e("div", { style: { textAlign:"center", padding:"60px 0" } },
             e("div", { className:"spinner", style: { margin:"0 auto", borderTopColor:C.purple, borderColor:`${C.purple}30` } })
@@ -940,7 +961,33 @@ function ExploreOpportunitiesPage({ user, onBack }) {
 
 // ─── Dashboard ──────────────────────────────────────────────────────────────────
 function Dashboard({ user, onLogout }) {
-  const [view, setView] = useState("home"); // "home" | "opportunities"
+  // `view` is mirrored into the URL (?view=opportunities) so a hard refresh
+  // doesn't lose your place and land back on the home/parent page. Read the
+  // initial value from the URL on mount; every setView call below also
+  // pushes/replaces the URL so refresh and back/forward both behave.
+  const getViewFromUrl = () => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("view") === "opportunities" ? "opportunities" : "home";
+  };
+  const [view, setViewState] = useState(getViewFromUrl); // "home" | "opportunities"
+
+  const setView = (next, opts) => {
+    setViewState(next);
+    const params = new URLSearchParams(window.location.search);
+    if (next === "home") params.delete("view");
+    else params.set("view", next);
+    const newUrl = `${window.location.pathname}${params.toString() ? "?" + params.toString() : ""}`;
+    if (opts?.replace) window.history.replaceState({}, "", newUrl);
+    else window.history.pushState({}, "", newUrl);
+  };
+
+  // Keep view in sync with browser back/forward navigation.
+  useEffect(() => {
+    const onPopState = () => setViewState(getViewFromUrl());
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
   const [blueprint, setBlueprint] = useState(null);
   const [careerDiscoveryDone, setCareerDiscoveryDone] = useState(false);
   const [resumeDone, setResumeDone] = useState(false);
@@ -997,6 +1044,7 @@ function Dashboard({ user, onLogout }) {
     if (session) finalUrl += `#access_token=${session.access_token}&refresh_token=${session.refresh_token}`;
     window.open(finalUrl, "_blank");
   };
+
 
   const hasBlueprint = !!blueprint?.report;
   const fitScore = blueprint?.report?.recommendationConfidence || 0;
