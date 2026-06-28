@@ -154,15 +154,37 @@ async function getAIMatch(studentId, job, studentProfile) {
     if (cached) return cached;
   } catch {}
 
-  // 2. Call Gemini if no cache (key lives server-side in the Edge Function secret store)
+  // 2. Build a condensed profile summary — sending the FULL studentProfile object
+  //    (full CV text + 5 detailed career matches + 15 behavioral dimensions) regularly
+  //    exceeds the proxy's prompt length cap. Pull out only what's useful for a
+  //    job-fit judgement: CV text (truncated), stated goals, and top career signals.
+  let profileSummary = "No profile data available — treat as a generic MBA student.";
+  if (studentProfile) {
+    const cv = (studentProfile.cvText || "").slice(0, 1200);
+    const topMatches = (studentProfile.topCareerMatches || [])
+      .slice(0, 3)
+      .map(m => `${m.roleTitle} (fit ${m.careerFitScore}%)`)
+      .join(", ");
+    const risks = (studentProfile.careerRiskAreas || []).slice(0, 2).join("; ");
+    profileSummary = [
+      studentProfile.name ? `Name: ${studentProfile.name}` : "",
+      studentProfile.careerGoals ? `Stated career goal: ${studentProfile.careerGoals}` : "",
+      studentProfile.academicBackground ? `Academic background: ${studentProfile.academicBackground}` : "",
+      cv ? `CV summary: ${cv}` : "",
+      topMatches ? `Career Discovery's top role matches: ${topMatches}` : "",
+      risks ? `Known risk areas: ${risks}` : "",
+    ].filter(Boolean).join("\n");
+  }
+
   const prompt = `You are a career counsellor for MBA students. Analyse this student's profile against the job and respond in JSON only.
 
-Student profile: ${JSON.stringify(studentProfile || { skills: [], experience: "MBA student" })}
+Student profile:
+${profileSummary}
 
 Job: ${job.title} at ${job.company}
 Domain: ${job.domain}
 Requirements: ${(job.skills || []).join(", ")}
-Description: ${job.description || ""}
+Description: ${(job.description || "").slice(0, 800)}
 
 Respond in this exact JSON format (no markdown):
 {
@@ -529,10 +551,29 @@ function ExploreOpportunitiesPage({ user, onBack }) {
   useEffect(() => {
     const load = async () => {
       setLoadingJobs(true);
-      // Load student profile
+      // Load student profile (real source: campus2board_sessions, keyed by user_id)
       try {
-        const { data: bp } = await sb.from("career_blueprints").select("*").eq("student_id", user.id).order("created_at", { ascending:false }).limit(1).maybeSingle();
-        setStudentProfile(bp?.report_data || null);
+        const { data: session } = await sb.from("campus2board_sessions").select("student_profile, student_intelligence, report").eq("user_id", user.id).maybeSingle();
+        if (session) {
+          setStudentProfile({
+            // Raw CV + stated goals — the most direct signal for "does this person fit this job"
+            name: session.student_profile?.name,
+            cvText: session.student_profile?.cvText,
+            careerGoals: session.student_profile?.careerGoals,
+            interests: session.student_profile?.interests,
+            academicBackground: session.student_profile?.academicBackground,
+            // Behavioral scores from the Career Discovery simulation
+            behavioralScores: session.student_intelligence?.behavioralScores,
+            topCandidateRoles: session.student_intelligence?.topCandidateRoles,
+            // Career Discovery's own conclusions — useful context for Gemini to agree/disagree with
+            topCareerMatches: session.report?.topCareerMatches,
+            careerRiskAreas: session.report?.careerRiskAreas,
+            developmentPriorities: session.report?.developmentPriorities,
+            recommendationConfidence: session.report?.recommendationConfidence,
+          });
+        } else {
+          setStudentProfile(null);
+        }
       } catch {}
       // Load saved jobs
       try {
@@ -745,7 +786,7 @@ function Dashboard({ user, onLogout }) {
         if (sessionData && sessionData.report !== null) setCareerDiscoveryDone(true);
       } catch {}
       try {
-        const { data } = await sb.from("career_blueprints").select("*").eq("student_id", user.id).order("created_at", { ascending:false }).limit(1).maybeSingle();
+        const { data } = await sb.from("campus2board_sessions").select("report, updated_at").eq("user_id", user.id).maybeSingle();
         setBlueprint(data);
       } catch {}
       try {
@@ -785,9 +826,9 @@ function Dashboard({ user, onLogout }) {
     window.open(finalUrl, "_blank");
   };
 
-  const hasBlueprint = !!blueprint;
-  const fitScore = blueprint?.recommendation_confidence || blueprint?.report_data?.recommendationConfidence || 0;
-  const topMatches = blueprint?.report_data?.topCareerMatches || [];
+  const hasBlueprint = !!blueprint?.report;
+  const fitScore = blueprint?.report?.recommendationConfidence || 0;
+  const topMatches = blueprint?.report?.topCareerMatches || [];
   const isCareerDiscoveryComplete = careerDiscoveryDone || hasBlueprint;
 
   const progressSteps = [
@@ -864,7 +905,7 @@ function Dashboard({ user, onLogout }) {
         e("div", { style: { display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20, flexWrap:"wrap", gap:12 } },
           e("div", null,
             e("h3", { style: { margin:0, fontSize:17, fontWeight:800, color:C.charcoal } }, "Your Career Blueprint"),
-            e("p", { style: { margin:"4px 0 0", fontSize:13, color:C.muted } }, `Generated ${new Date(blueprint.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})}`)
+            e("p", { style: { margin:"4px 0 0", fontSize:13, color:C.muted } }, `Generated ${new Date(blueprint.updated_at).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})}`)
           ),
           e("button", { onClick:() => handleModuleClick("career-discovery"), style: { background:"transparent", color:C.purple, border:`2px solid ${C.purple}`, borderRadius:10, padding:"9px 18px", fontWeight:600, fontSize:13, cursor:"pointer" } }, "View Full Report →")
         ),
