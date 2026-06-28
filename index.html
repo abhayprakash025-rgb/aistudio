@@ -514,10 +514,11 @@ function JobCard({ job, onView, isSaved, onSave, isApplied, isViewed }) {
   // Button label/state: Applied (already in applications table) takes
   // priority over Viewed (opened the drawer this session but didn't apply),
   // which takes priority over the default "Apply Now" prompt.
+  // Color stays the same royal purple/white for Apply Now and Applied —
+  // only the label changes — Viewed gets a lighter outlined treatment so
+  // it's visually distinct without introducing a new color.
   const buttonLabel = isApplied ? "✓ Applied" : isViewed ? "Viewed" : "Apply Now";
-  const buttonStyle = isApplied
-    ? { background:C.success, color:C.white }
-    : isViewed
+  const buttonStyle = isViewed && !isApplied
     ? { background:C.white, color:C.purple, border:`1.5px solid ${C.purple}` }
     : { background:C.purple, color:C.white, border:"none" };
   return e("div", { className:"job-card", style: { background:C.white, borderRadius:16, border:`1px solid ${C.border}`, padding:"20px", boxShadow:"0 2px 8px rgba(75,0,130,0.05)", position:"relative", overflow:"hidden", cursor:"pointer" }, onClick:() => onView(job) },
