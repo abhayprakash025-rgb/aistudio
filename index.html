@@ -343,6 +343,8 @@ function JobDetailDrawer({ job, onClose, studentId, studentProfile, savedJobs, o
   const readinessColor = job.readiness === "high" ? C.success : job.readiness === "medium" ? C.gold : C.error;
 
   const scoreDisplay = aiData?.match_score ?? job.match_score ?? 0;
+  // Derive ring colour from the actual score (not the stale `readiness` text field)
+  const ringColor = scoreDisplay >= 80 ? C.success : scoreDisplay >= 60 ? C.gold : C.error;
 
   return e("div", { className:"drawer-overlay", onClick:onClose },
     e("div", { className:"drawer slide-in", onClick:ev => ev.stopPropagation() },
@@ -366,7 +368,7 @@ function JobDetailDrawer({ job, onClose, studentId, studentProfile, savedJobs, o
         ),
         // Match score ring
         e("div", { style: { display:"flex", alignItems:"center", gap:16, background:"rgba(255,255,255,0.08)", borderRadius:12, padding:"12px 16px" } },
-          e("div", { style: { width:56, height:56, borderRadius:"50%", border:`4px solid ${readinessColor}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 } },
+          e("div", { style: { width:56, height:56, borderRadius:"50%", border:`4px solid ${ringColor}`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 } },
             e("span", { style: { fontSize:16, fontWeight:900, color:C.white } }, scoreDisplay + "%")
           ),
           e("div", null,
@@ -406,9 +408,13 @@ function JobDetailDrawer({ job, onClose, studentId, studentProfile, savedJobs, o
             )
           ),
           e("div", { style: { display:"flex", gap:10 } },
-            e("button", { onClick:() => onApply(job), disabled:isApplied,
-              style: { flex:1, background:isApplied ? C.success : C.purple, color:C.white, border:"none", borderRadius:10, padding:"12px 20px", fontWeight:600, fontSize:14, cursor:isApplied?"default":"pointer" } },
-              isApplied ? "✓ Applied" : "Apply Now"
+            e("button", { onClick:() => {
+                onApply(job);
+                if (job.apply_link) window.open(job.apply_link, "_blank", "noopener,noreferrer");
+              },
+              disabled:false,
+              style: { flex:1, background:C.purple, color:C.white, border:"none", borderRadius:10, padding:"12px 20px", fontWeight:600, fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 } },
+              isApplied ? "✓ Applied — Open Again ↗" : "Apply Now ↗"
             ),
             e("button", { onClick:() => onSave(job),
               style: { padding:"12px 16px", border:`1.5px solid ${C.border}`, borderRadius:10, background:isSaved ? C.lavenderBg : C.white, cursor:"pointer", color:isSaved ? C.purple : C.muted } },
@@ -479,11 +485,22 @@ function FilterBar({ filters, onChange }) {
     e("select", { className:"filter-select", style:{flex:"0 1 140px"}, value:filters.type||"", onChange:ev => sel("type", ev.target.value) },
       e("option", {value:""}, "All Types"), e("option", {value:"Full-time"}, "Full-time"), e("option", {value:"Internship"}, "Internship"), e("option", {value:"Live Project"}, "Live Project")
     ),
-    e("select", { className:"filter-select", style:{flex:"0 1 150px"}, value:filters.domain||"", onChange:ev => sel("domain", ev.target.value) },
-      e("option", {value:""}, "All Domains"), e("option", {value:"Consulting"}, "Consulting"), e("option", {value:"Finance"}, "Finance"), e("option", {value:"Marketing"}, "Marketing"), e("option", {value:"Operations"}, "Operations"), e("option", {value:"Tech"}, "Tech")
+    e("select", { className:"filter-select", style:{flex:"0 1 190px"}, value:filters.domain||"", onChange:ev => sel("domain", ev.target.value) },
+      e("option", {value:""}, "All Domains"),
+      e("option", {value:"Sales & Marketing"}, "Sales & Marketing"),
+      e("option", {value:"Finance & Investment Banking"}, "Finance & IB"),
+      e("option", {value:"Human Resources"}, "Human Resources"),
+      e("option", {value:"Operations & Supply Chain"}, "Operations & Supply Chain"),
+      e("option", {value:"Business Analytics & AI"}, "Business Analytics & AI"),
+      e("option", {value:"Strategy & Consulting"}, "Strategy & Consulting"),
+      e("option", {value:"Product & Strategy"}, "Product & Strategy"),
+      e("option", {value:"General Management"}, "General Management")
     ),
-    e("select", { className:"filter-select", style:{flex:"0 1 140px"}, value:filters.readiness||"", onChange:ev => sel("readiness", ev.target.value) },
-      e("option", {value:""}, "All Readiness"), e("option", {value:"high"}, "✓ Strong Match"), e("option", {value:"medium"}, "~ Partial Match"), e("option", {value:"low"}, "! Skill Gap")
+    e("select", { className:"filter-select", style:{flex:"0 1 150px"}, value:filters.readiness||"", onChange:ev => sel("readiness", ev.target.value) },
+      e("option", {value:""}, "All Matches"),
+      e("option", {value:"high"}, "✓ Strong Match"),
+      e("option", {value:"medium"}, "~ Partial Match"),
+      e("option", {value:"low"}, "! Skill Gap")
     ),
     e("select", { className:"filter-select", style:{flex:"0 1 130px"}, value:filters.sortBy||"match", onChange:ev => sel("sortBy", ev.target.value) },
       e("option", {value:"match"}, "Best Match"), e("option", {value:"recent"}, "Most Recent"), e("option", {value:"salary"}, "Salary")
@@ -494,10 +511,11 @@ function FilterBar({ filters, onChange }) {
 
 // ─── Job Card ───────────────────────────────────────────────────────────────────
 function JobCard({ job, onView, isSaved, onSave, isApplied }) {
-  const readinessColor = job.readiness === "high" ? C.success : job.readiness === "medium" ? C.gold : C.error;
   const score = job.match_score ?? 0;
+  // Color based on actual score: green 80+, amber 60-79, red below 60
+  const scoreColor = score >= 80 ? C.success : score >= 60 ? C.gold : C.error;
   return e("div", { className:"job-card", style: { background:C.white, borderRadius:16, border:`1px solid ${C.border}`, padding:"20px", boxShadow:"0 2px 8px rgba(75,0,130,0.05)", position:"relative", overflow:"hidden", cursor:"pointer" }, onClick:() => onView(job) },
-    e("div", { style: { position:"absolute", top:0, left:0, right:0, height:3, background:`linear-gradient(90deg, ${readinessColor}, ${readinessColor}80)` } }),
+    e("div", { style: { position:"absolute", top:0, left:0, right:0, height:3, background:`linear-gradient(90deg, ${scoreColor}, ${scoreColor}80)` } }),
     e("div", { style: { display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:12 } },
       e("div", { style: { display:"flex", gap:10, alignItems:"center", flex:1, minWidth:0 } },
         e("div", { style: { width:40, height:40, borderRadius:10, background:`${C.purple}12`, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, fontSize:15, color:C.purple, flexShrink:0 } }, (job.company||"?")[0]),
@@ -507,8 +525,8 @@ function JobCard({ job, onView, isSaved, onSave, isApplied }) {
         )
       ),
       e("div", { style: { display:"flex", flexDirection:"column", alignItems:"center", flexShrink:0, marginLeft:8 } },
-        e("div", { style: { width:42, height:42, borderRadius:"50%", border:`3px solid ${readinessColor}`, display:"flex", alignItems:"center", justifyContent:"center" } },
-          e("span", { style: { fontSize:11, fontWeight:900, color:readinessColor } }, score + "%")
+        e("div", { style: { width:42, height:42, borderRadius:"50%", border:`3px solid ${scoreColor}`, display:"flex", alignItems:"center", justifyContent:"center" } },
+          e("span", { style: { fontSize:11, fontWeight:900, color:scoreColor } }, score + "%")
         )
       )
     ),
@@ -517,13 +535,13 @@ function JobCard({ job, onView, isSaved, onSave, isApplied }) {
       e("span", { style: { display:"inline-flex", alignItems:"center", gap:3, fontSize:11, color:C.muted } }, e(Icons.clock), " " + (job.type||"Full-time")),
       job.salary_range && e("span", { style: { fontSize:11, color:C.success, fontWeight:600 } }, job.salary_range)
     ),
-    job.skills?.length > 0 && e("div", { style: { display:"flex", flexWrap:"wrap", gap:4, marginBottom:12 } },
+    (Array.isArray(job.skills) ? job.skills : []).length > 0 && e("div", { style: { display:"flex", flexWrap:"wrap", gap:4, marginBottom:12 } },
       job.skills.slice(0,3).map((s,i) => e("span", { key:i, className:"pill", style:{fontSize:10, padding:"2px 8px"} }, s)),
       job.skills.length > 3 && e("span", { className:"pill", style:{fontSize:10, padding:"2px 8px", background:"transparent", border:`1px solid ${C.border}`, color:C.muted} }, `+${job.skills.length-3}`)
     ),
     e("div", { style: { display:"flex", gap:8 } },
       e("button", { onClick:ev => { ev.stopPropagation(); onView(job); }, style: { flex:1, background:C.purple, color:C.white, border:"none", borderRadius:8, padding:"9px 12px", fontWeight:600, fontSize:12, cursor:"pointer" } },
-        isApplied ? "✓ Applied" : "View Details"
+        isApplied ? "✓ Explored" : "View Details"
       ),
       e("button", { onClick:ev => { ev.stopPropagation(); onSave(job); }, style: { padding:"9px 12px", border:`1.5px solid ${C.border}`, borderRadius:8, background:isSaved ? C.lavenderBg : C.white, cursor:"pointer", color:isSaved ? C.purple : C.muted } },
         e(Icons.bookmark, isSaved)
@@ -582,29 +600,45 @@ function ExploreOpportunitiesPage({ user, onBack }) {
 
   // ── Load jobs using personalized ranking when available ───────────────────────
   const loadPersonalizedJobs = async () => {
+    const fifteenDaysAgo = new Date();
+    fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
+
     // Try the cosine-similarity SQL function first (requires student embedding to exist)
     try {
       const { data: ranked, error } = await sb.rpc("match_jobs_for_student", {
         p_student_id: user.id,
-        match_count: 50  // fetch top 50; client-side filters will narrow further
+        match_count: 80
       });
       if (!error && ranked && ranked.length > 0) {
-        // `personalized_score` from the SQL function replaces the static `match_score`
-        // in grid badges. We remap it onto the same `match_score` field so every
-        // downstream component (JobCard, sorting) works without any changes.
-        const jobs = ranked.map(j => ({ ...j, match_score: j.personalized_score, _personalized: true }));
+        // Filter to last 15 days and compute readiness from actual score
+        const jobs = ranked
+          .filter(j => !j.posted_at || new Date(j.posted_at) >= fifteenDaysAgo)
+          .map(j => {
+            const score = j.personalized_score || 0;
+            const readiness = score >= 80 ? "high" : score >= 60 ? "medium" : "low";
+            return { ...j, match_score: score, readiness, _personalized: true };
+          });
         setAllJobs(jobs);
         setUsingMockData(false);
         return;
       }
     } catch {}
 
-    // Fallback: no embedding yet (student hasn't completed Career Discovery, or embedding
-    // hasn't been generated yet). Show all active jobs sorted by the static seeded score.
+    // Fallback: no embedding yet. Show active jobs from the last 15 days.
     try {
-      const { data: jobs, error } = await sb.from("jobs").select("*").eq("is_active", true).order("match_score", { ascending:false });
+      const { data: jobs, error } = await sb
+        .from("jobs")
+        .select("*")
+        .eq("is_active", true)
+        .gte("posted_at", fifteenDaysAgo.toISOString())
+        .order("match_score", { ascending: false });
       if (!error && jobs && jobs.length > 0) {
-        setAllJobs(jobs);
+        // Recompute readiness from match_score
+        const enriched = jobs.map(j => {
+          const score = j.match_score || 0;
+          return { ...j, readiness: score >= 80 ? "high" : score >= 60 ? "medium" : "low" };
+        });
+        setAllJobs(enriched);
         setUsingMockData(false);
         return;
       }
@@ -674,13 +708,27 @@ function ExploreOpportunitiesPage({ user, onBack }) {
     let list = [...allJobs];
     if (filters.search) {
       const q = filters.search.toLowerCase();
-      list = list.filter(j => j.title?.toLowerCase().includes(q) || j.company?.toLowerCase().includes(q) || j.domain?.toLowerCase().includes(q) || j.skills?.some(s => s.toLowerCase().includes(q)));
+      list = list.filter(j => j.title?.toLowerCase().includes(q) || j.company?.toLowerCase().includes(q) || j.domain?.toLowerCase().includes(q) || (Array.isArray(j.skills) ? j.skills.some(s => s.toLowerCase().includes(q)) : false));
     }
     if (filters.type) list = list.filter(j => j.type === filters.type);
     if (filters.domain) list = list.filter(j => j.domain === filters.domain);
-    if (filters.readiness) list = list.filter(j => j.readiness === filters.readiness);
+    if (filters.readiness) {
+      list = list.filter(j => {
+        // Compute readiness from match_score if readiness field is missing/stale
+        const score = j.match_score || 0;
+        const computed = score >= 80 ? "high" : score >= 60 ? "medium" : "low";
+        const effective = j.readiness || computed;
+        return effective === filters.readiness;
+      });
+    }
     if (filters.sortBy === "match") list.sort((a,b) => (b.match_score||0)-(a.match_score||0));
-    else if (filters.sortBy === "recent") list.sort((a,b) => new Date(b.created_at||0)-new Date(a.created_at||0));
+    else if (filters.sortBy === "recent") list.sort((a,b) => new Date(b.posted_at || b.created_at || 0).getTime() - new Date(a.posted_at || a.created_at || 0).getTime());
+    else if (filters.sortBy === "salary") {
+      list.sort((a,b) => {
+        const parse = (s) => { if (!s) return 0; const n = parseInt((s||"").replace(/[^0-9]/g,"")); return isNaN(n)?0:n; };
+        return parse(b.salary_range) - parse(a.salary_range);
+      });
+    }
     return list;
   }, [allJobs, filters]);
 
@@ -740,7 +788,7 @@ function ExploreOpportunitiesPage({ user, onBack }) {
             e("div", { style: { display:"flex", gap:12, flexWrap:"wrap" } },
               [
                 { value: allJobs.length, label:"Matched Openings", color:C.gold },
-                { value: applications.length, label:"Applications Sent", color:"#A7F3D0" },
+                { value: applications.length, label:"Jobs Explored", color:"#A7F3D0" },
                 { value: savedJobs.length, label:"Saved Jobs", color:"#BFDBFE" },
               ].map((s,i) => e("div", { key:i, style: { background:"rgba(255,255,255,0.1)", borderRadius:12, padding:"14px 20px", textAlign:"center", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,0.12)", minWidth:90 } },
                 e("div", { style: { color:s.color, fontSize:28, fontWeight:900, lineHeight:1, fontFamily:"monospace" } }, s.value),
