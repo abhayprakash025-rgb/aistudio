@@ -507,10 +507,19 @@ function FilterBar({ filters, onChange, availableDomains }) {
 }
 
 // ─── Job Card ───────────────────────────────────────────────────────────────────
-function JobCard({ job, onView, isSaved, onSave, isApplied }) {
+function JobCard({ job, onView, isSaved, onSave, isApplied, isViewed }) {
   const score = job.match_score ?? 0;
   // Color based on actual score: green 80+, amber 60-79, red below 60
   const scoreColor = score >= 80 ? C.success : score >= 60 ? C.gold : C.error;
+  // Button label/state: Applied (already in applications table) takes
+  // priority over Viewed (opened the drawer this session but didn't apply),
+  // which takes priority over the default "Apply Now" prompt.
+  const buttonLabel = isApplied ? "✓ Applied" : isViewed ? "Viewed" : "Apply Now";
+  const buttonStyle = isApplied
+    ? { background:C.success, color:C.white }
+    : isViewed
+    ? { background:C.white, color:C.purple, border:`1.5px solid ${C.purple}` }
+    : { background:C.purple, color:C.white, border:"none" };
   return e("div", { className:"job-card", style: { background:C.white, borderRadius:16, border:`1px solid ${C.border}`, padding:"20px", boxShadow:"0 2px 8px rgba(75,0,130,0.05)", position:"relative", overflow:"hidden", cursor:"pointer" }, onClick:() => onView(job) },
     e("div", { style: { position:"absolute", top:0, left:0, right:0, height:3, background:`linear-gradient(90deg, ${scoreColor}, ${scoreColor}80)` } }),
     e("div", { style: { display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:12 } },
@@ -537,8 +546,8 @@ function JobCard({ job, onView, isSaved, onSave, isApplied }) {
       job.skills.length > 3 && e("span", { className:"pill", style:{fontSize:10, padding:"2px 8px", background:"transparent", border:`1px solid ${C.border}`, color:C.muted} }, `+${job.skills.length-3}`)
     ),
     e("div", { style: { display:"flex", gap:8 } },
-      e("button", { onClick:ev => { ev.stopPropagation(); onView(job); }, style: { flex:1, background:C.purple, color:C.white, border:"none", borderRadius:8, padding:"9px 12px", fontWeight:600, fontSize:12, cursor:"pointer" } },
-        isApplied ? "✓ Explored" : "View Details"
+      e("button", { onClick:ev => { ev.stopPropagation(); onView(job); }, style: { flex:1, ...buttonStyle, borderRadius:8, padding:"9px 12px", fontWeight:600, fontSize:12, cursor:"pointer" } },
+        buttonLabel
       ),
       e("button", { onClick:ev => { ev.stopPropagation(); onSave(job); }, style: { padding:"9px 12px", border:`1.5px solid ${C.border}`, borderRadius:8, background:isSaved ? C.lavenderBg : C.white, cursor:"pointer", color:isSaved ? C.purple : C.muted } },
         e(Icons.bookmark, isSaved)
@@ -556,6 +565,7 @@ function ExploreOpportunitiesPage({ user, onBack }) {
   const [selectedJob, setSelectedJob] = useState(null);
   const [savedJobs, setSavedJobs] = useState([]);
   const [appliedJobIds, setAppliedJobIds] = useState(new Set());
+  const [viewedJobIds, setViewedJobIds] = useState(new Set());
   const [applications, setApplications] = useState([]);
   const [studentProfile, setStudentProfile] = useState(null);
   const [activeView, setActiveView] = useState("jobs"); // "jobs" | "saved" | "applied"
@@ -606,6 +616,13 @@ function ExploreOpportunitiesPage({ user, onBack }) {
         p_student_id: user.id,
         match_count: 80
       });
+      if (error) {
+        // Surface this — a silent catch here is exactly what caused everyone
+        // to see flat 75% fallback scores with no way to tell why.
+        console.warn("match_jobs_for_student RPC error (falling back to static scores):", error);
+      } else if (!ranked || ranked.length === 0) {
+        console.warn("match_jobs_for_student returned no rows (no embedding yet, or no active jobs) — falling back to static scores.");
+      }
       if (!error && ranked && ranked.length > 0) {
         // Filter to last 15 days and compute readiness from actual score
         const jobs = ranked
@@ -619,7 +636,9 @@ function ExploreOpportunitiesPage({ user, onBack }) {
         setUsingMockData(false);
         return;
       }
-    } catch {}
+    } catch (err) {
+      console.warn("match_jobs_for_student RPC threw (falling back to static scores):", err);
+    }
 
     // Fallback: no embedding yet. Show active jobs from the last 15 days.
     try {
@@ -752,6 +771,14 @@ function ExploreOpportunitiesPage({ user, onBack }) {
     return list;
   }, [allJobs, filters]);
 
+  // Opening the drawer counts as "viewed" — a lightweight, session-only signal
+  // distinct from "applied". Not persisted to the DB; it just lets the card
+  // distinguish "never looked at" from "looked at but didn't apply".
+  const handleView = (job) => {
+    setViewedJobIds(prev => new Set(prev).add(job.id));
+    setSelectedJob(job);
+  };
+
   const handleSave = async (job) => {
     const alreadySaved = savedJobs.some(s => s.job_id === job.id);
     if (alreadySaved) {
@@ -857,7 +884,7 @@ function ExploreOpportunitiesPage({ user, onBack }) {
               e("p", { style: { fontSize:13, marginTop:6 } }, "Try clearing some filters to see more results.")
             ) :
             e("div", { style: { display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(280px, 1fr))", gap:16, marginTop:4 } },
-              filteredJobs.map(job => e(JobCard, { key:job.id, job, onView:setSelectedJob, isSaved:savedJobIds.has(job.id), onSave:handleSave, isApplied:appliedJobIds.has(job.id) }))
+              filteredJobs.map(job => e(JobCard, { key:job.id, job, onView:handleView, isSaved:savedJobIds.has(job.id), onSave:handleSave, isApplied:appliedJobIds.has(job.id), isViewed:viewedJobIds.has(job.id) }))
             )
         )
       ),
@@ -871,7 +898,7 @@ function ExploreOpportunitiesPage({ user, onBack }) {
           e("div", { style: { display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(280px, 1fr))", gap:16 } },
             savedJobs.map(s => {
               const job = s.jobs || s;
-              return e(JobCard, { key:job.id, job, onView:setSelectedJob, isSaved:true, onSave:handleSave, isApplied:appliedJobIds.has(job.id) });
+              return e(JobCard, { key:job.id, job, onView:handleView, isSaved:true, onSave:handleSave, isApplied:appliedJobIds.has(job.id), isViewed:viewedJobIds.has(job.id) });
             })
           )
       ),
