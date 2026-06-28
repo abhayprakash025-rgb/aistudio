@@ -54,7 +54,9 @@ const CAREER_DISCOVERY_URL = "https://campus2board-v2-career-intelligence-platfo
 const RESUME_BUILDER_URL = "https://campus2board-resume-review-561715786352.asia-southeast1.run.app";
 const INTERVIEW_TRAINING_URL = "https://campus2board-interview-619074305977.asia-southeast1.run.app";
 const WORKPLACE_SIMULATION_URL = "https://campus2board-workplace-ai-619074305977.asia-southeast1.run.app";
-const GEMINI_API_KEY = "AQ.Ab8RN6JZErgPfiuvMk2jz6w2oyYPabfo6zpE_fpiQlvsmGL6dg";
+// Gemini key is NEVER stored client-side. All AI calls route through
+// the Supabase Edge Function /functions/v1/gemini-proxy which holds
+// the key securely server-side. See SETUP NOTES below.
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ─── Palette ───────────────────────────────────────────────────────────────────
@@ -126,16 +128,22 @@ const MOCK_JOBS = [
 ];
 
 // ─── Gemini AI Helper ──────────────────────────────────────────────────────────
+// Key is NEVER in client JS — all Gemini calls go through Supabase Edge Function.
+// Deploy supabase/functions/gemini-proxy/index.ts (file provided separately).
 async function callGemini(prompt) {
-  if (!GEMINI_API_KEY) return null;
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+    const { data: { session } } = await sb.auth.getSession();
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/gemini-proxy`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.4, maxOutputTokens: 600 } })
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`
+      },
+      body: JSON.stringify({ prompt })
     });
+    if (!res.ok) return null;
     const data = await res.json();
-    return data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
+    return data?.text || null;
   } catch { return null; }
 }
 
@@ -601,17 +609,41 @@ function ExploreOpportunitiesPage({ user, onBack }) {
       )
     ),
     e("div", { style: { maxWidth:1200, margin:"0 auto", padding:"28px 24px" } },
-      // Hero Stats
-      e("div", { style: { display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(160px, 1fr))", gap:14, marginBottom:24 } },
-        [
-          { label:"Matched Openings", value:allJobs.length, color:C.purple },
-          { label:"Verified Recruiters", value:38, color:"#1D6A45" },
-          { label:"Applications Sent", value:applications.length, color:C.gold },
-          { label:"Saved Jobs", value:savedJobs.length, color:"#1E40AF" },
-        ].map((stat,i) => e("div", { key:i, style: { background:C.white, borderRadius:14, border:`1px solid ${C.border}`, padding:"16px 20px", boxShadow:"0 2px 8px rgba(75,0,130,0.05)" } },
-          e("div", { style: { fontSize:26, fontWeight:900, color:stat.color, letterSpacing:"-1px", fontFamily:"monospace" } }, stat.value),
-          e("div", { style: { fontSize:11, color:C.muted, fontWeight:600, marginTop:4, textTransform:"uppercase", letterSpacing:"0.5px" } }, stat.label)
-        ))
+      // Hero Banner
+      e("div", { style: { background:`linear-gradient(135deg, ${C.purple} 0%, #6A0DAD 100%)`, borderRadius:20, padding:"28px 32px", marginBottom:24, position:"relative", overflow:"hidden" } },
+        e("div", { style: { position:"absolute", top:-40, right:-40, width:220, height:220, borderRadius:"50%", background:"rgba(245,158,11,0.12)" } }),
+        e("div", { style: { position:"absolute", bottom:-50, right:160, width:150, height:150, borderRadius:"50%", background:"rgba(127,107,179,0.18)" } }),
+        e("div", { style: { position:"relative", zIndex:1 } },
+          e("div", { style: { display:"flex", alignItems:"flex-start", justifyContent:"space-between", flexWrap:"wrap", gap:20, marginBottom:24 } },
+            e("div", null,
+              e("p", { style: { color:C.gold, fontSize:12, fontWeight:700, letterSpacing:"1.2px", textTransform:"uppercase", margin:"0 0 8px" } }, "AI-Matched Opportunities"),
+              e("h1", { style: { color:C.white, fontSize:24, fontWeight:800, margin:"0 0 8px", letterSpacing:"-0.4px" } }, "Browse Verified Openings"),
+              e("p", { style: { color:"rgba(255,255,255,0.6)", fontSize:14, margin:0, maxWidth:440 } },
+                "Jobs and internships matched to your Career Blueprint score. Apply with one click using your validated profile."
+              )
+            ),
+            e("div", { style: { display:"flex", gap:12, flexWrap:"wrap" } },
+              [
+                { value: allJobs.length, label:"Matched Openings", color:C.gold },
+                { value: applications.length, label:"Applications Sent", color:"#A7F3D0" },
+                { value: savedJobs.length, label:"Saved Jobs", color:"#BFDBFE" },
+              ].map((s,i) => e("div", { key:i, style: { background:"rgba(255,255,255,0.1)", borderRadius:12, padding:"14px 20px", textAlign:"center", backdropFilter:"blur(8px)", border:"1px solid rgba(255,255,255,0.12)", minWidth:90 } },
+                e("div", { style: { color:s.color, fontSize:28, fontWeight:900, lineHeight:1, fontFamily:"monospace" } }, s.value),
+                e("div", { style: { color:"rgba(255,255,255,0.55)", fontSize:10, fontWeight:700, marginTop:5, letterSpacing:"0.6px", textTransform:"uppercase" } }, s.label)
+              ))
+            )
+          ),
+          e("div", { style: { display:"flex", gap:8, flexWrap:"wrap" } },
+            [
+              { icon:"🏢", label:"38 Verified Recruiters" },
+              { icon:"✅", label:"Background-checked companies" },
+              { icon:"⚡", label:"AI-matched to your profile" },
+              { icon:"🚀", label:"One-click apply" },
+            ].map((tag,i) => e("div", { key:i, style: { display:"flex", alignItems:"center", gap:5, background:"rgba(255,255,255,0.08)", borderRadius:20, padding:"5px 12px", color:"rgba(255,255,255,0.75)", fontSize:12, fontWeight:500 } },
+              e("span", null, tag.icon), tag.label
+            ))
+          )
+        )
       ),
       usingMockData && e("div", { style: { background:"#FFFBEB", border:"1px solid #FDE68A", borderRadius:10, padding:"10px 16px", marginBottom:16, display:"flex", alignItems:"center", gap:10 } },
         e("span", { style: { fontSize:14 } }, "⚠️"),
@@ -834,7 +866,7 @@ function Dashboard({ user, onLogout }) {
       ),
       // Module Cards
       e("h2", { style: { fontSize:20, fontWeight:800, color:C.charcoal, margin:"0 0 20px", letterSpacing:"-0.3px" } }, "Your Learning Modules"),
-      e("div", { style: { display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(310px, 1fr))", gap:20 } },
+      e("div", { style: { display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:20 } },
         MODULES.map(mod => {
           const ModIcon = Icons[mod.icon];
           return e("div", { key:mod.id, className:`module-card ${mod.live ? "live" : ""}`,
