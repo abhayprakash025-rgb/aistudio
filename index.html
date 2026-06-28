@@ -411,6 +411,7 @@ function JobDetailDrawer({ job, onClose, studentId, studentProfile, savedJobs, o
             e("button", { onClick:() => {
                 onApply(job);
                 if (job.apply_link) window.open(job.apply_link, "_blank", "noopener,noreferrer");
+                else if (job.source_url) window.open(job.source_url, "_blank", "noopener,noreferrer");
               },
               disabled:false,
               style: { flex:1, background:C.purple, color:C.white, border:"none", borderRadius:10, padding:"12px 20px", fontWeight:600, fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8 } },
@@ -475,7 +476,7 @@ function JobDetailDrawer({ job, onClose, studentId, studentProfile, savedJobs, o
 }
 
 // ─── Filter Bar ─────────────────────────────────────────────────────────────────
-function FilterBar({ filters, onChange }) {
+function FilterBar({ filters, onChange, availableDomains }) {
   const sel = (key, val) => onChange({ ...filters, [key]: val });
   return e("div", { style: { background:C.white, borderRadius:14, border:`1px solid ${C.border}`, padding:"16px 20px", display:"flex", flexWrap:"wrap", gap:12, alignItems:"center", boxShadow:"0 2px 8px rgba(75,0,130,0.05)" } },
     e("div", { style: { position:"relative", flex:"1 1 200px", minWidth:0 } },
@@ -485,27 +486,23 @@ function FilterBar({ filters, onChange }) {
     e("select", { className:"filter-select", style:{flex:"0 1 140px"}, value:filters.type||"", onChange:ev => sel("type", ev.target.value) },
       e("option", {value:""}, "All Types"), e("option", {value:"Full-time"}, "Full-time"), e("option", {value:"Internship"}, "Internship"), e("option", {value:"Live Project"}, "Live Project")
     ),
+    // Domain options are derived from the jobs actually present in the DB
+    // (availableDomains), not a hardcoded list — so this never shows a
+    // domain with zero jobs in it, and automatically picks up new domains
+    // as job-feed-sync starts populating them.
     e("select", { className:"filter-select", style:{flex:"0 1 190px"}, value:filters.domain||"", onChange:ev => sel("domain", ev.target.value) },
       e("option", {value:""}, "All Domains"),
-      e("option", {value:"Sales & Marketing"}, "Sales & Marketing"),
-      e("option", {value:"Finance & Investment Banking"}, "Finance & IB"),
-      e("option", {value:"Human Resources"}, "Human Resources"),
-      e("option", {value:"Operations & Supply Chain"}, "Operations & Supply Chain"),
-      e("option", {value:"Business Analytics & AI"}, "Business Analytics & AI"),
-      e("option", {value:"Strategy & Consulting"}, "Strategy & Consulting"),
-      e("option", {value:"Product & Strategy"}, "Product & Strategy"),
-      e("option", {value:"General Management"}, "General Management")
+      (availableDomains||[]).map(d => e("option", { key:d, value:d }, d))
     ),
     e("select", { className:"filter-select", style:{flex:"0 1 150px"}, value:filters.readiness||"", onChange:ev => sel("readiness", ev.target.value) },
       e("option", {value:""}, "All Matches"),
       e("option", {value:"high"}, "✓ Strong Match"),
-      e("option", {value:"medium"}, "~ Partial Match"),
-      e("option", {value:"low"}, "! Skill Gap")
+      e("option", {value:"medium"}, "~ Partial Match")
     ),
-    e("select", { className:"filter-select", style:{flex:"0 1 130px"}, value:filters.sortBy||"match", onChange:ev => sel("sortBy", ev.target.value) },
-      e("option", {value:"match"}, "Best Match"), e("option", {value:"recent"}, "Most Recent"), e("option", {value:"salary"}, "Salary")
+    e("select", { className:"filter-select", style:{flex:"0 1 130px"}, value:filters.sortBy||"recent", onChange:ev => sel("sortBy", ev.target.value) },
+      e("option", {value:"recent"}, "Most Recent"), e("option", {value:"older"}, "Older")
     ),
-    (filters.search || filters.type || filters.domain || filters.readiness) && e("button", { onClick:() => onChange({ sortBy:"match" }), style: { padding:"10px 14px", border:`1.5px solid ${C.border}`, borderRadius:10, background:C.white, cursor:"pointer", color:C.muted, fontSize:12, fontWeight:600, whiteSpace:"nowrap" } }, "Clear")
+    (filters.search || filters.type || filters.domain || filters.readiness) && e("button", { onClick:() => onChange({ sortBy:"recent" }), style: { padding:"10px 14px", border:`1.5px solid ${C.border}`, borderRadius:10, background:C.white, cursor:"pointer", color:C.muted, fontSize:12, fontWeight:600, whiteSpace:"nowrap" } }, "Clear")
   );
 }
 
@@ -555,7 +552,7 @@ function ExploreOpportunitiesPage({ user, onBack }) {
   const [allJobs, setAllJobs] = useState([]);
   const [loadingJobs, setLoadingJobs] = useState(true);
   const [usingMockData, setUsingMockData] = useState(false);
-  const [filters, setFilters] = useState({ sortBy:"match" });
+  const [filters, setFilters] = useState({ sortBy:"recent" });
   const [selectedJob, setSelectedJob] = useState(null);
   const [savedJobs, setSavedJobs] = useState([]);
   const [appliedJobIds, setAppliedJobIds] = useState(new Set());
@@ -631,7 +628,7 @@ function ExploreOpportunitiesPage({ user, onBack }) {
         .select("*")
         .eq("is_active", true)
         .gte("posted_at", fifteenDaysAgo.toISOString())
-        .order("match_score", { ascending: false });
+        .order("posted_at", { ascending: false });
       if (!error && jobs && jobs.length > 0) {
         // Recompute readiness from match_score
         const enriched = jobs.map(j => {
@@ -703,6 +700,22 @@ function ExploreOpportunitiesPage({ user, onBack }) {
     load();
   }, [user.id]);
 
+  // Recency bucket: "Most Recent" = posted within the last 5 days, else "Older".
+  // Used both for the sort dropdown and (if ever needed) for a recency badge.
+  const FIVE_DAYS_MS = 5 * 24 * 60 * 60 * 1000;
+  const isRecent = (j) => {
+    const posted = j.posted_at || j.created_at;
+    if (!posted) return false;
+    return (Date.now() - new Date(posted).getTime()) <= FIVE_DAYS_MS;
+  };
+
+  // Domain options shown in the filter are derived from jobs actually in the
+  // DB right now — never hardcoded — so the dropdown can't drift out of sync
+  // with what's really there (e.g. showing 8 domains when only 3 have jobs).
+  const availableDomains = useMemo(() => {
+    return [...new Set(allJobs.map(j => j.domain).filter(Boolean))].sort();
+  }, [allJobs]);
+
   // Filter + sort jobs client-side
   const filteredJobs = useMemo(() => {
     let list = [...allJobs];
@@ -721,12 +734,19 @@ function ExploreOpportunitiesPage({ user, onBack }) {
         return effective === filters.readiness;
       });
     }
-    if (filters.sortBy === "match") list.sort((a,b) => (b.match_score||0)-(a.match_score||0));
-    else if (filters.sortBy === "recent") list.sort((a,b) => new Date(b.posted_at || b.created_at || 0).getTime() - new Date(a.posted_at || a.created_at || 0).getTime());
-    else if (filters.sortBy === "salary") {
+    if (filters.sortBy === "older") {
+      // Older first: oldest posted_at first, recent-bucket jobs pushed to the end
       list.sort((a,b) => {
-        const parse = (s) => { if (!s) return 0; const n = parseInt((s||"").replace(/[^0-9]/g,"")); return isNaN(n)?0:n; };
-        return parse(b.salary_range) - parse(a.salary_range);
+        const aRecent = isRecent(a), bRecent = isRecent(b);
+        if (aRecent !== bRecent) return aRecent ? 1 : -1; // older bucket first
+        return new Date(a.posted_at || a.created_at || 0).getTime() - new Date(b.posted_at || b.created_at || 0).getTime();
+      });
+    } else {
+      // Most Recent (default): newest first, recent-bucket jobs surfaced first
+      list.sort((a,b) => {
+        const aRecent = isRecent(a), bRecent = isRecent(b);
+        if (aRecent !== bRecent) return aRecent ? -1 : 1;
+        return new Date(b.posted_at || b.created_at || 0).getTime() - new Date(a.posted_at || a.created_at || 0).getTime();
       });
     }
     return list;
@@ -826,7 +846,7 @@ function ExploreOpportunitiesPage({ user, onBack }) {
       ),
       // Main Content
       activeView === "jobs" && e("div", null,
-        e(FilterBar, { filters, onChange:setFilters }),
+        e(FilterBar, { filters, onChange:setFilters, availableDomains }),
         e("div", { style: { marginTop:20 } },
           loadingJobs ? e("div", { style: { textAlign:"center", padding:"60px 0" } },
             e("div", { className:"spinner", style: { margin:"0 auto", borderTopColor:C.purple, borderColor:`${C.purple}30` } })
