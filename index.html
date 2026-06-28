@@ -544,8 +544,76 @@ function ExploreOpportunitiesPage({ user, onBack }) {
   const [applications, setApplications] = useState([]);
   const [studentProfile, setStudentProfile] = useState(null);
   const [activeView, setActiveView] = useState("jobs"); // "jobs" | "saved" | "applied"
+  // embeddingStatus: tracks whether we've refreshed the student's profile embedding this session.
+  // "idle" → not started | "embedding" → calling embed-profile Edge Function |
+  // "done" → embedding exists and is fresh | "no_profile" → student hasn't done Career Discovery yet
+  const [embeddingStatus, setEmbeddingStatus] = useState("idle");
 
   const displayName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Student";
+
+  // ── Embedding helper ──────────────────────────────────────────────────────────
+  // Calls the embed-profile Edge Function to ensure this student's profile vector
+  // is current. The function checks a hash internally and skips the Gemini API call
+  // if the profile hasn't changed since the last embedding — so calling this on
+  // every page load is safe and cheap.
+  const refreshStudentEmbedding = async () => {
+    setEmbeddingStatus("embedding");
+    try {
+      const { data: { session: authSession } } = await sb.auth.getSession();
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/embed-profile`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${authSession?.access_token || SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({ type: "student" })
+      });
+      const result = await res.json();
+      if (result.skipped || result.error === "No Career Discovery session found. Complete Career Discovery first.") {
+        setEmbeddingStatus("no_profile");
+      } else {
+        setEmbeddingStatus("done");
+      }
+    } catch (err) {
+      console.warn("embed-profile call failed (non-fatal):", err);
+      setEmbeddingStatus("done"); // fall through to static scores gracefully
+    }
+  };
+
+  // ── Load jobs using personalized ranking when available ───────────────────────
+  const loadPersonalizedJobs = async () => {
+    // Try the cosine-similarity SQL function first (requires student embedding to exist)
+    try {
+      const { data: ranked, error } = await sb.rpc("match_jobs_for_student", {
+        p_student_id: user.id,
+        match_count: 50  // fetch top 50; client-side filters will narrow further
+      });
+      if (!error && ranked && ranked.length > 0) {
+        // `personalized_score` from the SQL function replaces the static `match_score`
+        // in grid badges. We remap it onto the same `match_score` field so every
+        // downstream component (JobCard, sorting) works without any changes.
+        const jobs = ranked.map(j => ({ ...j, match_score: j.personalized_score, _personalized: true }));
+        setAllJobs(jobs);
+        setUsingMockData(false);
+        return;
+      }
+    } catch {}
+
+    // Fallback: no embedding yet (student hasn't completed Career Discovery, or embedding
+    // hasn't been generated yet). Show all active jobs sorted by the static seeded score.
+    try {
+      const { data: jobs, error } = await sb.from("jobs").select("*").eq("is_active", true).order("match_score", { ascending:false });
+      if (!error && jobs && jobs.length > 0) {
+        setAllJobs(jobs);
+        setUsingMockData(false);
+        return;
+      }
+    } catch {}
+
+    // Last resort: show mock data
+    setAllJobs(MOCK_JOBS);
+    setUsingMockData(true);
+  };
 
   // Load jobs + student data
   useEffect(() => {
@@ -556,16 +624,13 @@ function ExploreOpportunitiesPage({ user, onBack }) {
         const { data: session } = await sb.from("campus2board_sessions").select("student_profile, student_intelligence, report").eq("user_id", user.id).maybeSingle();
         if (session) {
           setStudentProfile({
-            // Raw CV + stated goals — the most direct signal for "does this person fit this job"
             name: session.student_profile?.name,
             cvText: session.student_profile?.cvText,
             careerGoals: session.student_profile?.careerGoals,
             interests: session.student_profile?.interests,
             academicBackground: session.student_profile?.academicBackground,
-            // Behavioral scores from the Career Discovery simulation
             behavioralScores: session.student_intelligence?.behavioralScores,
             topCandidateRoles: session.student_intelligence?.topCandidateRoles,
-            // Career Discovery's own conclusions — useful context for Gemini to agree/disagree with
             topCareerMatches: session.report?.topCareerMatches,
             careerRiskAreas: session.report?.careerRiskAreas,
             developmentPriorities: session.report?.developmentPriorities,
@@ -586,20 +651,19 @@ function ExploreOpportunitiesPage({ user, onBack }) {
         setApplications(apps || []);
         setAppliedJobIds(new Set((apps||[]).map(a => a.job_id)));
       } catch {}
-      // Load jobs
-      try {
-        const { data: jobs, error } = await sb.from("jobs").select("*").eq("is_active", true).order("match_score", { ascending:false });
-        if (error || !jobs || jobs.length === 0) {
-          setAllJobs(MOCK_JOBS);
-          setUsingMockData(true);
-        } else {
-          setAllJobs(jobs);
-          setUsingMockData(false);
-        }
-      } catch {
-        setAllJobs(MOCK_JOBS);
-        setUsingMockData(true);
-      }
+
+      // Step 1: Refresh this student's profile embedding (no-op if profile hasn't changed).
+      // This runs in the background — we don't block the job list on it.
+      refreshStudentEmbedding().then(() => {
+        // Step 2: After embedding is confirmed fresh, re-fetch jobs with personalized ranking.
+        // This second load replaces the first batch (which may have used static scores)
+        // with scores computed against the freshly-confirmed embedding.
+        loadPersonalizedJobs();
+      });
+
+      // Step 1 (parallel): Load jobs immediately with whatever embedding exists right now.
+      // Most visits this will already return personalized scores (embedding was set on last visit).
+      await loadPersonalizedJobs();
       setLoadingJobs(false);
     };
     load();
@@ -684,15 +748,27 @@ function ExploreOpportunitiesPage({ user, onBack }) {
               ))
             )
           ),
-          e("div", { style: { display:"flex", gap:8, flexWrap:"wrap" } },
+          e("div", { style: { display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" } },
             [
               { icon:"🏢", label:"38 Verified Recruiters" },
               { icon:"✅", label:"Background-checked companies" },
-              { icon:"⚡", label:"AI-matched to your profile" },
               { icon:"🚀", label:"One-click apply" },
             ].map((tag,i) => e("div", { key:i, style: { display:"flex", alignItems:"center", gap:5, background:"rgba(255,255,255,0.08)", borderRadius:20, padding:"5px 12px", color:"rgba(255,255,255,0.75)", fontSize:12, fontWeight:500 } },
               e("span", null, tag.icon), tag.label
-            ))
+            )),
+            embeddingStatus === "embedding" &&
+              e("div", { style: { display:"flex", alignItems:"center", gap:6, background:"rgba(245,158,11,0.18)", borderRadius:20, padding:"5px 12px", color:C.gold, fontSize:12, fontWeight:600 } },
+                e("div", { className:"spinner-sm", style:{ borderTopColor:C.gold, borderColor:"rgba(245,158,11,0.3)" } }),
+                "Personalising scores…"
+              ),
+            embeddingStatus === "done" && allJobs.some(j => j._personalized) &&
+              e("div", { style: { display:"flex", alignItems:"center", gap:5, background:"rgba(16,185,129,0.18)", borderRadius:20, padding:"5px 12px", color:"#A7F3D0", fontSize:12, fontWeight:600 } },
+                e("span", null, "✶"), "Scores personalised to your profile"
+              ),
+            embeddingStatus === "no_profile" &&
+              e("div", { style: { display:"flex", alignItems:"center", gap:5, background:"rgba(255,255,255,0.08)", borderRadius:20, padding:"5px 12px", color:"rgba(255,255,255,0.55)", fontSize:12, fontWeight:500 } },
+                e("span", null, "⚡"), "Complete Career Discovery to personalise scores"
+              )
           )
         )
       ),
