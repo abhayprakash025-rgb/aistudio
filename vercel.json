@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/community", "destination": "/community.html" },
+    { "source": "/mentors", "destination": "/mentors.html" },
+    { "source": "/admin", "destination": "/admin.html" }
+  ]
+}

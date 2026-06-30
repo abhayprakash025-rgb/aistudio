@@ -1,0 +1,1560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Campus2Board · Community</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin
+    onerror="this.onerror=null;document.write('<script src=&quot;https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js&quot; crossorigin><\/script>')"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin
+    onerror="this.onerror=null;document.write('<script src=&quot;https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js&quot; crossorigin><\/script>')"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin
+    onerror="this.onerror=null;document.write('<script src=&quot;https://unpkg.com/@supabase/supabase-js@2&quot; crossorigin><\/script>')"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Poppins', sans-serif; background: #FAFAFC; color: #1E1E1E; -webkit-font-smoothing: antialiased; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #C4B5D9; border-radius: 4px; }
+
+    /* Focus */
+    input:focus, select:focus, textarea:focus { outline: none; border-color: #4B0082 !important; box-shadow: 0 0 0 3px rgba(75,0,130,0.10); }
+    button { font-family: 'Poppins', sans-serif; cursor: pointer; }
+
+    /* Animations */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes slideRight { from { transform:translateX(-100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
+    @keyframes slideInRight { from { transform:translateX(100%); } to { transform:translateX(0); } }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.5; } }
+    @keyframes shimmer { 0% { background-position:-200% 0; } 100% { background-position:200% 0; } }
+
+    .fade-up { animation: fadeUp 0.38s cubic-bezier(0.22,1,0.36,1) both; }
+    .slide-right { animation: slideRight 0.32s cubic-bezier(0.22,1,0.36,1) both; }
+    .spinner { border: 2.5px solid rgba(75,0,130,0.15); border-top-color: #4B0082; border-radius: 50%; animation: spin 0.75s linear infinite; }
+    .spinner-gold { border: 2.5px solid rgba(245,158,11,0.2); border-top-color: #F59E0B; border-radius: 50%; animation: spin 0.75s linear infinite; }
+    .pulse { animation: pulse 1.8s ease infinite; }
+
+    /* Card */
+    .card { background: #fff; border-radius: 16px; border: 1px solid #EDE9F5; box-shadow: 0 2px 12px rgba(75,0,130,0.05); }
+    .card-hover { transition: transform 0.18s ease, box-shadow 0.18s ease; }
+    .card-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(75,0,130,0.10); }
+
+    /* Defensive icon sizing — SVGs never exceed their intended size even if a render path is mis-invoked */
+    svg { flex-shrink: 0; }
+    .nav-item svg { width: 17px; height: 17px; }
+    .sidebar svg { max-width: 24px; max-height: 24px; }
+
+    /* Sidebar */
+    .sidebar { width: 240px; min-width: 240px; background: #fff; border-right: 1px solid #EDE9F5; height: 100vh; position: fixed; top: 0; left: 0; display: flex; flex-direction: column; z-index: 100; }
+    .main-content { margin-left: 240px; min-height: 100vh; }
+
+    /* Nav items */
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-radius: 10px; cursor: pointer; font-size: 13.5px; font-weight: 500; color: #6B7280; transition: all 0.15s; margin: 1px 8px; }
+    .nav-item:hover { background: #F3F0FA; color: #4B0082; }
+    .nav-item.active { background: #F3F0FA; color: #4B0082; font-weight: 600; }
+    .nav-item.active svg { stroke: #4B0082; }
+
+    /* Tab */
+    .tab { display: inline-flex; align-items: center; gap: 7px; padding: 10px 18px; font-size: 13px; font-weight: 600; border-bottom: 2px solid transparent; color: #6B7280; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+    .tab.active { color: #4B0082; border-bottom-color: #4B0082; }
+    .tab:hover:not(.active) { color: #4B0082; background: #F8F6FF; }
+
+    /* Badge */
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 20px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.2px; }
+    .badge-purple { background: #F3F0FA; color: #4B0082; }
+    .badge-gold { background: #FFFBEB; color: #D97706; }
+    .badge-green { background: #ECFDF5; color: #059669; }
+    .badge-blue { background: #EFF6FF; color: #1D4ED8; }
+    .badge-red { background: #FEF2F2; color: #DC2626; }
+
+    /* Pill */
+    .pill { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+
+    /* Mentor status dots */
+    .dot-online { width: 8px; height: 8px; border-radius: 50%; background: #10B981; display: inline-block; }
+    .dot-busy { width: 8px; height: 8px; border-radius: 50%; background: #F59E0B; display: inline-block; }
+    .dot-offline { width: 8px; height: 8px; border-radius: 50%; background: #D1D5DB; display: inline-block; }
+
+    /* Verified */
+    .verified-badge { display: inline-flex; align-items: center; gap: 3px; background: #FFFBEB; color: #D97706; border: 1px solid #FDE68A; border-radius: 20px; padding: 2px 8px; font-size: 10px; font-weight: 700; }
+
+    /* Input */
+    .inp { width: 100%; padding: 10px 14px; border: 1.5px solid #EDE9F5; border-radius: 10px; font-size: 13.5px; font-family: 'Poppins', sans-serif; color: #1E1E1E; background: #fff; transition: border-color 0.15s; }
+    .inp::placeholder { color: #9CA3AF; }
+    textarea.inp { resize: vertical; min-height: 90px; line-height: 1.6; }
+
+    /* Btn */
+    .btn-primary { background: #4B0082; color: #fff; border: none; border-radius: 10px; padding: 10px 20px; font-size: 13px; font-weight: 600; font-family: 'Poppins', sans-serif; transition: background 0.15s, transform 0.12s; }
+    .btn-primary:hover { background: #3A0066; transform: translateY(-1px); }
+    .btn-outline { background: transparent; color: #4B0082; border: 1.5px solid #4B0082; border-radius: 10px; padding: 9px 18px; font-size: 13px; font-weight: 600; font-family: 'Poppins', sans-serif; transition: all 0.15s; }
+    .btn-outline:hover { background: #F3F0FA; }
+    .btn-gold { background: #F59E0B; color: #fff; border: none; border-radius: 10px; padding: 10px 20px; font-size: 13px; font-weight: 700; font-family: 'Poppins', sans-serif; transition: background 0.15s; }
+    .btn-gold:hover { background: #D97706; }
+    .btn-ghost { background: transparent; color: #6B7280; border: none; padding: 8px 12px; font-size: 13px; font-family: 'Poppins', sans-serif; border-radius: 8px; transition: all 0.15s; }
+    .btn-ghost:hover { background: #F3F0FA; color: #4B0082; }
+
+    /* Divider */
+    .divider { height: 1px; background: #EDE9F5; }
+
+    /* Modal overlay */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .modal { background: #fff; border-radius: 20px; max-width: 560px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 64px rgba(0,0,0,0.18); }
+
+    /* Drawer */
+    .drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.38); z-index: 400; display: flex; justify-content: flex-end; }
+    .drawer { background: #fff; width: min(540px, 100vw); height: 100vh; overflow-y: auto; box-shadow: -12px 0 48px rgba(0,0,0,0.14); animation: slideInRight 0.3s cubic-bezier(0.22,1,0.36,1); }
+
+    /* Select */
+    select { font-family: 'Poppins', sans-serif; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px !important; }
+
+    /* Domain picker grid */
+    .domain-card { border: 2px solid #EDE9F5; border-radius: 14px; padding: 20px 16px; cursor: pointer; text-align: center; transition: all 0.15s; background: #fff; }
+    .domain-card:hover { border-color: #7F6BB3; background: #F8F6FF; }
+    .domain-card.selected { border-color: #4B0082; background: #F3F0FA; }
+
+    /* Avatar */
+    .avatar { border-radius: 50%; object-fit: cover; }
+    .avatar-placeholder { border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; background: linear-gradient(135deg, #4B0082, #7F6BB3); }
+
+    /* Discussion card */
+    .disc-card { padding: 20px 24px; border-bottom: 1px solid #EDE9F5; transition: background 0.12s; cursor: pointer; }
+    .disc-card:hover { background: #FAFAFF; }
+    .disc-card:last-child { border-bottom: none; }
+
+    /* Mentor card */
+    .mentor-card { padding: 24px; transition: box-shadow 0.18s; }
+
+    /* Course card */
+    .course-thumb { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 10px; background: linear-gradient(135deg, #4B0082 0%, #7F6BB3 100%); }
+
+    /* Resource row */
+    .resource-row { display: flex; align-items: center; gap: 14px; padding: 16px 20px; border-bottom: 1px solid #F0EDF8; transition: background 0.12s; cursor: pointer; }
+    .resource-row:hover { background: #F8F6FF; }
+    .resource-row:last-child { border-bottom: none; }
+
+    /* Event card */
+    .event-card { padding: 20px 24px; border-bottom: 1px solid #EDE9F5; }
+    .event-card:last-child { border-bottom: none; }
+
+    /* Home section */
+    .home-section { margin-bottom: 32px; }
+    .section-title { font-size: 15px; font-weight: 700; color: #1E1E1E; margin-bottom: 14px; letter-spacing: -0.2px; }
+
+    /* Quick stat */
+    .stat-chip { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #EDE9F5; border-radius: 10px; padding: 10px 16px; }
+
+    /* Welcome banner gradient */
+    .welcome-banner { background: linear-gradient(135deg, #4B0082 0%, #6A0DAD 60%, #7F6BB3 100%); border-radius: 16px; padding: 28px 32px; color: #fff; position: relative; overflow: hidden; }
+    .welcome-banner::after { content: ''; position: absolute; top: -40%; right: -10%; width: 280px; height: 280px; border-radius: 50%; background: rgba(255,255,255,0.05); pointer-events: none; }
+  </style>
+</head>
+<body>
+<div id="root">
+  <div style="min-height:100vh;background:#4B0082;display:flex;align-items:center;justify-content:center;font-family:'Poppins',sans-serif;">
+    <div style="text-align:center;">
+      <div style="width:52px;height:52px;background:#F59E0B;border-radius:14px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:22px;color:#4B0082;margin:0 auto 20px;">C</div>
+      <div style="color:#fff;font-size:13px;opacity:0.85;">Loading Campus2Board Community…</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Last-resort safety net: if anything throws before the React app mounts
+  // (most commonly because a CDN script — React, ReactDOM, or Supabase — failed
+  // to load due to a network restriction, firewall, or blocker), this replaces
+  // the default loading state with a visible, actionable error instead of
+  // leaving the page blank.
+  window.addEventListener("error", function (ev) {
+    if (window.__c2bAppMounted) return;
+    var root = document.getElementById("root");
+    if (!root) return;
+    root.innerHTML =
+      '<div style="min-height:100vh;background:#FAFAFC;display:flex;align-items:center;justify-content:center;padding:24px;font-family:\'Poppins\',sans-serif;">' +
+        '<div style="max-width:440px;width:100%;background:#fff;border-radius:16px;border:1px solid #EDE9F5;box-shadow:0 2px 12px rgba(75,0,130,0.05);padding:32px;text-align:center;">' +
+          '<div style="font-size:36px;margin-bottom:12px;">&#9888;&#65039;</div>' +
+          '<h2 style="font-size:17px;font-weight:800;color:#1E1E1E;margin-bottom:8px;">Couldn\'t load Community</h2>' +
+          '<p style="font-size:13.5px;color:#6B7280;line-height:1.6;margin-bottom:8px;">This page needs to load some files from the internet to work, and that didn\'t finish.</p>' +
+          '<p style="font-size:12px;color:#9CA3AF;line-height:1.6;margin-bottom:20px;">Common causes: no internet connection, a firewall or ad-blocker, or a slow network. Try reloading, or check your connection.</p>' +
+          '<button onclick="window.location.reload()" style="background:#4B0082;color:#fff;border:none;border-radius:10px;padding:10px 24px;font-size:13px;font-weight:600;font-family:\'Poppins\',sans-serif;cursor:pointer;">Reload Page</button>' +
+        '</div>' +
+      '</div>';
+  });
+</script>
+
+<script>
+// Pre-flight check: confirm the CDN-loaded libraries actually arrived before
+// touching them. If they didn't, throw a clear, named error (caught by the
+// window error listener above) instead of a confusing "X is not defined".
+(function checkDependencies() {
+  var missing = [];
+  if (typeof React === "undefined") missing.push("React");
+  if (typeof ReactDOM === "undefined") missing.push("ReactDOM");
+  if (typeof supabase === "undefined") missing.push("Supabase client library");
+  if (missing.length) {
+    throw new Error("Required libraries failed to load: " + missing.join(", ") + ". Check your internet connection and reload.");
+  }
+})();
+
+const { useState, useEffect, useRef, useMemo, useCallback, Fragment } = React;
+const { createClient } = supabase;
+const e = React.createElement;
+
+// ─── Config ──────────────────────────────────────────────────────────────────
+const SUPABASE_URL = "https://yhycjpsbuiidboadvchp.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InloeWNqcHNidWlpZGJvYWR2Y2hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMjMxMTUsImV4cCI6MjA5Nzc5OTExNX0.9l639s3cddDx9nHWeAr533yJ996rM4tqSQU8iUrPUWg";
+
+// Some browser security contexts (e.g. opening this file directly via file://)
+// block access to window.localStorage with a thrown SecurityError. Supabase's
+// client reads/writes localStorage by default to persist the session, and an
+// uncaught throw here happens at module-load time — before React ever mounts —
+// which is what produces a fully blank page. We detect that case and fall back
+// to an in-memory store so the app always boots, even though sessions won't
+// persist across reloads when storage is unavailable.
+function getSafeStorage() {
+  try {
+    const testKey = "__c2b_storage_test__";
+    window.localStorage.setItem(testKey, "1");
+    window.localStorage.removeItem(testKey);
+    return window.localStorage;
+  } catch (err) {
+    console.warn("localStorage unavailable, falling back to in-memory storage:", err);
+    const mem = {};
+    return {
+      getItem: k => (k in mem ? mem[k] : null),
+      setItem: (k, v) => { mem[k] = String(v); },
+      removeItem: k => { delete mem[k]; },
+      clear: () => { Object.keys(mem).forEach(k => delete mem[k]); },
+    };
+  }
+}
+const safeStorage = getSafeStorage();
+
+let sb;
+try {
+  sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { storage: safeStorage, persistSession: true, autoRefreshToken: true }
+  });
+} catch (err) {
+  console.error("Failed to initialize Supabase client:", err);
+  sb = null;
+}
+
+// Gemini via Supabase Edge Function proxy — key NEVER exposed client-side
+async function callGemini(prompt) {
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/gemini-proxy`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token || SUPABASE_ANON_KEY}` },
+      body: JSON.stringify({ prompt })
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data?.text || null;
+  } catch { return null; }
+}
+
+// ─── Color system ─────────────────────────────────────────────────────────────
+const C = {
+  purple: "#4B0082", purpleMid: "#6A0DAD", lavender: "#7F6BB3",
+  lavBg: "#F3F0FA", gold: "#F59E0B", goldDark: "#D97706",
+  text: "#1E1E1E", muted: "#6B7280", bg: "#FAFAFC",
+  white: "#FFFFFF", border: "#EDE9F5",
+  success: "#10B981", error: "#EF4444",
+};
+
+// ─── Domains ─────────────────────────────────────────────────────────────────
+const DOMAINS = [
+  { id:"finance", label:"Finance", emoji:"💰", color:"#1D6A45" },
+  { id:"marketing", label:"Marketing", emoji:"📣", color:"#DC2626" },
+  { id:"operations", label:"Operations", emoji:"⚙️", color:"#92400E" },
+  { id:"analytics", label:"Analytics", emoji:"📊", color:"#1E40AF" },
+  { id:"hr", label:"HR", emoji:"🤝", color:"#5B21B6" },
+  { id:"consulting", label:"Consulting", emoji:"🧩", color:"#0E7490" },
+  { id:"product", label:"Product", emoji:"🚀", color:"#7C3AED" },
+  { id:"sales", label:"Sales", emoji:"🎯", color:"#B45309" },
+  { id:"supply_chain", label:"Supply Chain", emoji:"🔗", color:"#065F46" },
+  { id:"banking", label:"Banking", emoji:"🏦", color:"#1E3A5F" },
+  { id:"risk", label:"Risk", emoji:"🛡️", color:"#9D174D" },
+  { id:"strategy", label:"Strategy", emoji:"♟️", color:"#374151" },
+];
+
+// ─── Mock data ────────────────────────────────────────────────────────────────
+const MENTORS = [
+  { id:"m1", name:"Priya Sharma", company:"McKinsey & Company", role:"Associate Partner", exp:"8 yrs", domain:"Consulting", photo:null, status:"online", nextAvail:"Today, 7:00 PM", rating:4.9, sessions:124, expertise:["Case Interviews","Strategy","Leadership"], verified:true, bio:"Priya leads client engagements across BFSI and consumer sectors. She has mentored 200+ students placed in top consulting firms.", communities:["consulting","finance"] },
+  { id:"m2", name:"Arjun Mehta", company:"Goldman Sachs", role:"Vice President", exp:"11 yrs", domain:"Finance", photo:null, status:"busy", nextAvail:"Tomorrow, 6:30 PM", rating:4.8, sessions:89, expertise:["Investment Banking","M&A","Financial Modelling"], verified:true, bio:"Arjun focuses on cross-border M&A and IPO advisory. Passionate about helping MBA students break into IBD.", communities:["finance","banking"] },
+  { id:"m3", name:"Sneha Kapoor", company:"Hindustan Unilever", role:"Brand Manager", exp:"6 yrs", domain:"Marketing", photo:null, status:"online", nextAvail:"Today, 9:00 PM", rating:4.7, sessions:67, expertise:["Brand Strategy","P&L","Consumer Insights"], verified:true, bio:"Sneha manages a ₹500Cr FMCG portfolio. She coaches students on breaking into FMCG marketing roles.", communities:["marketing","sales"] },
+  { id:"m4", name:"Rahul Verma", company:"Amazon India", role:"Senior PM", exp:"9 yrs", domain:"Product", photo:null, status:"offline", nextAvail:"Thu, 8:00 PM", rating:4.6, sessions:43, expertise:["Product Strategy","SQL","Roadmapping"], verified:false, bio:"Rahul owns marketplace seller experience at Amazon. He reviews product case studies and PM resumes.", communities:["product","analytics"] },
+  { id:"m5", name:"Kavya Nair", company:"Bain & Company", role:"Manager", exp:"7 yrs", domain:"Consulting", photo:null, status:"online", nextAvail:"Today, 6:00 PM", rating:4.9, sessions:152, expertise:["Structuring","Healthcare","Operations"], verified:true, bio:"Kavya specializes in healthcare consulting and operational turnarounds. She is a gold-standard mock interviewer.", communities:["consulting","operations"] },
+  { id:"m6", name:"Vikram Singh", company:"HDFC Bank", role:"DGM - Risk", exp:"14 yrs", domain:"Banking", photo:null, status:"busy", nextAvail:"Tomorrow, 5:00 PM", rating:4.5, sessions:31, expertise:["Credit Risk","Basel III","Portfolio Mgmt"], verified:true, bio:"Vikram leads credit risk for the retail lending portfolio. He mentors students targeting risk and banking roles.", communities:["banking","risk","finance"] },
+];
+
+const DISCUSSIONS = [
+  { id:"d1", title:"Best resources for Consulting case prep — from scratch to Day 1?", body:"I come from an engineering background with no consulting exposure. Where do I start? I have 4 months before placements.", author:"Ananya R.", domain:"consulting", likes:34, comments:12, answers:3, bookmarked:false, pinned:true, tag:"Case Prep", createdAt:"2h ago", answered:true },
+  { id:"d2", title:"DCF vs. Comparable Companies — when do you use which?", body:"Trying to understand the practical difference. Most models I see use both but weigh them differently.", author:"Rohan S.", domain:"finance", likes:28, comments:8, answers:5, bookmarked:false, pinned:false, tag:"Valuation", createdAt:"5h ago", answered:true },
+  { id:"d3", title:"How to build a brand P&L from scratch for a new product launch?", body:"Case study practice — the interviewer gave me a blank P&L template and asked me to build assumptions. Totally blanked.", author:"Prerna M.", domain:"marketing", likes:19, comments:6, answers:2, bookmarked:true, pinned:false, tag:"Brand Mgmt", createdAt:"1d ago", answered:false },
+  { id:"d4", title:"What's a realistic timeline to pivot from Operations to Strategy?", body:"Currently targeting supply chain roles but feel drawn to corporate strategy. Should I try both in placements?", author:"Dev K.", domain:"operations", likes:15, comments:4, answers:1, bookmarked:false, pinned:false, tag:"Career Switch", createdAt:"2d ago", answered:false },
+  { id:"d5", title:"Tips for cracking HUL Leadership Trainee interview?", body:"Shortlisted for HUL LT. The process is notoriously rigorous. Anyone have first-hand experience?", author:"Siya T.", domain:"marketing", likes:41, comments:18, answers:7, bookmarked:true, pinned:true, tag:"Placement Prep", createdAt:"3d ago", answered:true },
+];
+
+const RESOURCES = [
+  { id:"r1", title:"McKinsey Problem Solving Framework", type:"PDF", domain:"consulting", size:"2.4 MB", downloads:342, bookmarked:false, tag:"Framework" },
+  { id:"r2", title:"DCF Valuation Template — IB Ready", type:"Excel", domain:"finance", size:"1.1 MB", downloads:289, bookmarked:true, tag:"Template" },
+  { id:"r3", title:"Top 50 Marketing Interview Questions", type:"PDF", domain:"marketing", size:"890 KB", downloads:407, bookmarked:false, tag:"Interview Prep" },
+  { id:"r4", title:"Product Teardown: Swiggy's Growth Loop", type:"PDF", domain:"product", size:"3.2 MB", downloads:156, bookmarked:false, tag:"Case Study" },
+  { id:"r5", title:"FMCG Brand Building Playbook", type:"PDF", domain:"marketing", size:"4.1 MB", downloads:198, bookmarked:true, tag:"Playbook" },
+  { id:"r6", title:"Supply Chain Risk Frameworks 2024", type:"PDF", domain:"operations", size:"2.8 MB", downloads:87, bookmarked:false, tag:"Framework" },
+  { id:"r7", title:"BCG X MBA Consulting Resume Guide", type:"PDF", domain:"consulting", size:"1.5 MB", downloads:512, bookmarked:false, tag:"Resume" },
+  { id:"r8", title:"Credit Risk Fundamentals — Basel III", type:"PDF", domain:"banking", size:"5.6 MB", downloads:64, bookmarked:false, tag:"Industry Report" },
+];
+
+const EVENTS = [
+  { id:"e1", title:"AMA: Breaking into IB from a Non-Finance Background", type:"AMA", host:"Arjun Mehta · Goldman Sachs", date:"Fri, 4 Jul · 7:00 PM", registered:true, capacity:50, registered_count:42, past:false, domain:"finance", recording:null },
+  { id:"e2", title:"Resume Review Drop-In — Consulting Track", type:"Resume Review", host:"Priya Sharma · McKinsey", date:"Sat, 5 Jul · 11:00 AM", registered:false, capacity:20, registered_count:18, past:false, domain:"consulting", recording:null },
+  { id:"e3", title:"Workshop: Building Your Marketing Portfolio in 30 Days", type:"Workshop", host:"Sneha Kapoor · HUL", date:"Sun, 6 Jul · 6:30 PM", registered:false, capacity:75, registered_count:61, past:false, domain:"marketing", recording:null },
+  { id:"e4", title:"Recruiter Talk: What FMCG Companies Really Look For", type:"Recruiter Talk", host:"Neha Joshi · P&G India", date:"25 Jun · 7:00 PM", registered:true, capacity:100, registered_count:100, past:true, recording:"https://example.com/recording1", domain:"marketing" },
+  { id:"e5", title:"Industry Session: The Future of Risk Management in India", type:"Industry Session", host:"Vikram Singh · HDFC Bank", date:"22 Jun · 6:00 PM", registered:true, capacity:60, registered_count:60, past:true, recording:"https://example.com/recording2", domain:"banking" },
+];
+
+const COURSES = [
+  { id:"c1", title:"Investment Banking Fundamentals", mentor:"Arjun Mehta", domain:"finance", modules:8, duration:"6h 40m", level:"Intermediate", thumbnail:null, bookmarked:false, description:"From DCF to deal structuring — everything you need to crack IB interviews and perform on Day 1.", tags:["Valuation","M&A","Modelling"] },
+  { id:"c2", title:"Consulting Case Mastery", mentor:"Priya Sharma", domain:"consulting", modules:12, duration:"9h 15m", level:"Beginner–Advanced", thumbnail:null, bookmarked:true, description:"Structured case approach, frameworks, and 30 practice cases across McKinsey, Bain, and BCG formats.", tags:["Case Prep","Frameworks","Structuring"] },
+  { id:"c3", title:"Brand Management in FMCG", mentor:"Sneha Kapoor", domain:"marketing", modules:6, duration:"4h 30m", level:"Intermediate", thumbnail:null, bookmarked:false, description:"P&L ownership, brand activation, and consumer research methods from an HUL brand manager.", tags:["Brand Strategy","P&L","FMCG"] },
+  { id:"c4", title:"Product Management for MBAs", mentor:"Rahul Verma", domain:"product", modules:9, duration:"7h 00m", level:"Beginner", thumbnail:null, bookmarked:false, description:"Product thinking, PRDs, and PM interview frameworks tailored for MBA lateral entrants.", tags:["PM","Roadmap","SQL"] },
+];
+
+// ─── SVG Icon library ─────────────────────────────────────────────────────────
+const Icon = {
+  home: (s=18) => e("svg",{width:s,height:s,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("path",{d:"M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"}),e("polyline",{points:"9 22 9 12 15 12 15 22"})),
+  users: (s=18) => e("svg",{width:s,height:s,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("path",{d:"M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"}),e("circle",{cx:9,cy:7,r:4}),e("path",{d:"M23 21v-2a4 4 0 0 0-3-3.87"}),e("path",{d:"M16 3.13a4 4 0 0 1 0 7.75"})),
+  messageCircle: (s=18) => e("svg",{width:s,height:s,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("path",{d:"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"})),
+  video: (s=18) => e("svg",{width:s,height:s,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("polygon",{points:"23 7 16 12 23 17 23 7"}),e("rect",{x:1,y:5,width:15,height:14,rx:2,ry:2})),
+  book: (s=18) => e("svg",{width:s,height:s,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("path",{d:"M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"}),e("path",{d:"M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"})),
+  calendar: (s=18) => e("svg",{width:s,height:s,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("rect",{x:3,y:4,width:18,height:18,rx:2,ry:2}),e("line",{x1:16,y1:2,x2:16,y2:6}),e("line",{x1:8,y1:2,x2:8,y2:6}),e("line",{x1:3,y1:10,x2:21,y2:10})),
+  folder: (s=18) => e("svg",{width:s,height:s,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("path",{d:"M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"})),
+  bell: (s=18) => e("svg",{width:s,height:s,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("path",{d:"M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"}),e("path",{d:"M13.73 21a2 2 0 0 1-3.46 0"})),
+  settings: (s=18) => e("svg",{width:s,height:s,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("circle",{cx:12,cy:12,r:3}),e("path",{d:"M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"})),
+  search: (s=16) => e("svg",{width:s,height:s,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("circle",{cx:11,cy:11,r:8}),e("line",{x1:21,y1:21,x2:16.65,y2:16.65})),
+  heart: (s=15,f=false) => e("svg",{width:s,height:s,fill:f?"#EF4444":"none",stroke:f?"#EF4444":"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("path",{d:"M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"})),
+  bookmark: (s=15,f=false) => e("svg",{width:s,height:s,fill:f?"#4B0082":"none",stroke:f?"#4B0082":"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("path",{d:"M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"})),
+  messageSquare: (s=15) => e("svg",{width:s,height:s,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("path",{d:"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"})),
+  check: (s=14) => e("svg",{width:s,height:s,fill:"none",stroke:"currentColor",strokeWidth:2.5,viewBox:"0 0 24 24"},e("polyline",{points:"20 6 9 17 4 12"})),
+  star: (s=13) => e("svg",{width:s,height:s,fill:C.gold,stroke:C.gold,strokeWidth:2,viewBox:"0 0 24 24"},e("polygon",{points:"12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"})),
+  zap: (s=13) => e("svg",{width:s,height:s,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("polygon",{points:"13 2 3 14 12 14 11 22 21 10 12 10 13 2"})),
+  x: (s=18) => e("svg",{width:s,height:s,fill:"none",stroke:"currentColor",strokeWidth:2.5,viewBox:"0 0 24 24"},e("line",{x1:18,y1:6,x2:6,y2:18}),e("line",{x1:6,y1:6,x2:18,y2:18})),
+  download: (s=15) => e("svg",{width:s,height:s,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("path",{d:"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"}),e("polyline",{points:"7 10 12 15 17 10"}),e("line",{x1:12,y1:15,x2:12,y2:3})),
+  plus: (s=16) => e("svg",{width:s,height:s,fill:"none",stroke:"currentColor",strokeWidth:2.5,viewBox:"0 0 24 24"},e("line",{x1:12,y1:5,x2:12,y2:19}),e("line",{x1:5,y1:12,x2:19,y2:12})),
+  arrowLeft: (s=18) => e("svg",{width:s,height:s,fill:"none",stroke:"currentColor",strokeWidth:2.5,viewBox:"0 0 24 24"},e("line",{x1:19,y1:12,x2:5,y2:12}),e("polyline",{points:"12 19 5 12 12 5"})),
+  clock: (s=13) => e("svg",{width:s,height:s,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("circle",{cx:12,cy:12,r:10}),e("polyline",{points:"12 6 12 12 16 14"})),
+  filter: (s=15) => e("svg",{width:s,height:s,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("polygon",{points:"22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"})),
+  play: (s=16) => e("svg",{width:s,height:s,fill:"currentColor",viewBox:"0 0 24 24"},e("polygon",{points:"5 3 19 12 5 21 5 3"})),
+  externalLink: (s=13) => e("svg",{width:s,height:s,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("path",{d:"M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"}),e("polyline",{points:"15 3 21 3 21 9"}),e("line",{x1:10,y1:14,x2:21,y2:3})),
+  logout: (s=16) => e("svg",{width:s,height:s,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("path",{d:"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"}),e("polyline",{points:"16 17 21 12 16 7"}),e("line",{x1:21,y1:12,x2:9,y2:12})),
+  chevronRight: (s=14) => e("svg",{width:s,height:s,fill:"none",stroke:"currentColor",strokeWidth:2.5,viewBox:"0 0 24 24"},e("polyline",{points:"9 18 15 12 9 6"})),
+  award: (s=14) => e("svg",{width:s,height:s,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("circle",{cx:12,cy:8,r:7}),e("polyline",{points:"8.21 13.89 7 23 12 20 17 23 15.79 13.88"})),
+  sparkle: (s=14) => e("svg",{width:s,height:s,fill:"none",stroke:"currentColor",strokeWidth:2,viewBox:"0 0 24 24"},e("path",{d:"M12 3L13.5 8.5L19 10L13.5 11.5L12 17L10.5 11.5L5 10L10.5 8.5L12 3Z"})),
+};
+
+// ─── Avatar component ─────────────────────────────────────────────────────────
+function Avatar({ name, size=36, photo }) {
+  const initials = (name||"?").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+  if (photo) return e("img", { src:photo, className:"avatar", style:{width:size,height:size}, alt:name });
+  return e("div", { className:"avatar-placeholder", style:{width:size,height:size,fontSize:size*0.36} }, initials);
+}
+
+// ─── Domain tag badge ─────────────────────────────────────────────────────────
+function DomainTag({ domainId }) {
+  const d = DOMAINS.find(x=>x.id===domainId) || { label:domainId, color:C.purple, emoji:"🏷️" };
+  return e("span", { style:{display:"inline-flex",alignItems:"center",gap:4,background:`${d.color}14`,color:d.color,borderRadius:20,padding:"2px 9px",fontSize:11,fontWeight:600} }, d.emoji, " ", d.label);
+}
+
+// ─── Status dot ───────────────────────────────────────────────────────────────
+function StatusDot({ status }) {
+  const map = { online:"#10B981", busy:"#F59E0B", offline:"#D1D5DB" };
+  return e("span", { style:{width:8,height:8,borderRadius:"50%",background:map[status]||map.offline,display:"inline-block"} });
+}
+
+// ─── Gemini AI floating helper ────────────────────────────────────────────────
+function GeminiTag({ label }) {
+  return e("span", { style:{display:"inline-flex",alignItems:"center",gap:4,background:"#F0F7FF",color:"#1D4ED8",borderRadius:20,padding:"2px 9px",fontSize:10,fontWeight:700,border:"1px solid #BFDBFE"} },
+    Icon.sparkle(13), "AI · ", label
+  );
+}
+
+// ─── Auth screen (reuses Supabase auth) ───────────────────────────────────────
+function AuthScreen({ onAuth }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleLogin(ev) {
+    ev.preventDefault();
+    setLoading(true); setError("");
+    if (!sb) { setError("Unable to connect to the authentication service. Please reload and try again."); setLoading(false); return; }
+    try {
+      const { data, error: err } = await sb.auth.signInWithPassword({ email, password });
+      if (err) { setError(err.message); setLoading(false); return; }
+      onAuth(data.user);
+    } catch (ex) {
+      setError("Something went wrong while signing in. Please try again.");
+      setLoading(false);
+    }
+  }
+
+  return e("div", { style:{minHeight:"100vh",background:C.purple,display:"flex",alignItems:"center",justifyContent:"center",padding:20} },
+    e("div", { className:"fade-up card", style:{width:"100%",maxWidth:400,padding:40} },
+      e("div", { style:{textAlign:"center",marginBottom:32} },
+        e("div", { style:{display:"inline-flex",alignItems:"center",gap:8,background:C.purple,borderRadius:12,padding:"8px 16px",marginBottom:16} },
+          e("span", { style:{fontWeight:900,fontSize:18,color:C.gold} }, "C2B"),
+          e("span", { style:{fontWeight:700,fontSize:14,color:"#fff",opacity:.9} }, "Community")
+        ),
+        e("h1", { style:{fontSize:22,fontWeight:800,color:C.text,marginBottom:6} }, "Welcome back"),
+        e("p", { style:{fontSize:13.5,color:C.muted} }, "Sign in with your Campus2Board account")
+      ),
+      e("form", { onSubmit:handleLogin },
+        e("div", { style:{marginBottom:14} },
+          e("label", { style:{fontSize:12,fontWeight:600,color:C.muted,display:"block",marginBottom:5} }, "Email"),
+          e("input", { className:"inp", type:"email", placeholder:"you@college.edu", value:email, onChange:ev=>setEmail(ev.target.value), required:true })
+        ),
+        e("div", { style:{marginBottom:20} },
+          e("label", { style:{fontSize:12,fontWeight:600,color:C.muted,display:"block",marginBottom:5} }, "Password"),
+          e("input", { className:"inp", type:"password", placeholder:"••••••••", value:password, onChange:ev=>setPassword(ev.target.value), required:true })
+        ),
+        error && e("p", { style:{fontSize:12,color:C.error,marginBottom:14,background:"#FEF2F2",padding:"8px 12px",borderRadius:8} }, error),
+        e("button", { type:"submit", className:"btn-primary", disabled:loading, style:{width:"100%",padding:"12px",fontSize:14} },
+          loading ? e("div",{className:"spinner",style:{width:18,height:18,margin:"0 auto"}}) : "Sign In"
+        )
+      ),
+      e("p", { style:{textAlign:"center",fontSize:12,color:C.muted,marginTop:20} },
+        "This uses your existing Campus2Board login."
+      )
+    )
+  );
+}
+
+// ─── Domain Picker (first-time) ───────────────────────────────────────────────
+function DomainPicker({ onComplete }) {
+  const [selected, setSelected] = useState([]);
+  const [saving, setSaving] = useState(false);
+
+  function toggle(id) {
+    setSelected(prev =>
+      prev.includes(id) ? prev.filter(x=>x!==id) : prev.length < 3 ? [...prev,id] : prev
+    );
+  }
+
+  async function handleSave() {
+    if (selected.length === 0) return;
+    setSaving(true);
+    // In production: upsert to community_profiles table
+    // await sb.from("community_profiles").upsert({ student_id: user.id, communities: selected })
+    onComplete(selected);
+  }
+
+  return e("div", { style:{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",padding:24} },
+    e("div", { className:"fade-up", style:{maxWidth:720,width:"100%"} },
+      e("div", { style:{textAlign:"center",marginBottom:36} },
+        e("div", { style:{display:"inline-flex",alignItems:"center",gap:8,marginBottom:20} },
+          e("div", { style:{width:44,height:44,background:C.purple,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:20,color:C.gold} }, "C"),
+          e("span", { style:{fontSize:22,fontWeight:800,color:C.text} }, "Campus2Board Community")
+        ),
+        e("h2", { style:{fontSize:26,fontWeight:800,color:C.text,marginBottom:10,letterSpacing:"-0.4px"} }, "Which domains are you targeting?"),
+        e("p", { style:{fontSize:14,color:C.muted,maxWidth:480,margin:"0 auto"} }, "Choose up to 3 communities. Your feed, mentors, discussions, and resources will be curated around them.")
+      ),
+      e("div", { style:{display:"grid",gridTemplateColumns:"repeat(4, 1fr)",gap:12,marginBottom:28} },
+        DOMAINS.map(d =>
+          e("div", { key:d.id, className:`domain-card ${selected.includes(d.id)?"selected":""}`, onClick:()=>toggle(d.id) },
+            e("div", { style:{fontSize:28,marginBottom:10} }, d.emoji),
+            e("div", { style:{fontSize:13,fontWeight:600,color:selected.includes(d.id)?C.purple:C.text} }, d.label),
+            selected.includes(d.id) && e("div", { style:{marginTop:6,display:"flex",justifyContent:"center"} },
+              e("div", { style:{width:18,height:18,borderRadius:"50%",background:C.purple,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff"} }, Icon.check(11))
+            )
+          )
+        )
+      ),
+      e("div", { style:{textAlign:"center"} },
+        e("p", { style:{fontSize:12,color:C.muted,marginBottom:14} },
+          selected.length === 0 ? "Select at least 1 domain to continue" :
+          selected.length < 3 ? `${selected.length} of 3 selected — you can add more or continue` :
+          "3 of 3 selected"
+        ),
+        e("button", { className:"btn-primary", disabled:selected.length===0||saving, onClick:handleSave, style:{padding:"12px 36px",fontSize:14,opacity:selected.length===0?0.5:1} },
+          saving ? e("div",{className:"spinner",style:{width:18,height:18,margin:"0 auto",borderColor:"rgba(255,255,255,0.3)",borderTopColor:"#fff"}}) : "Enter Community →"
+        )
+      )
+    )
+  );
+}
+
+// ─── Sidebar ──────────────────────────────────────────────────────────────────
+function Sidebar({ page, setPage, communities, studentName, onLogout }) {
+  const navItems = [
+    { id:"home", label:"Home", icon:Icon.home },
+    { id:"discussions", label:"Discussions", icon:Icon.messageCircle },
+    { id:"mentors", label:"Mentors", icon:Icon.users },
+    { id:"events", label:"Events", icon:Icon.calendar },
+    { id:"courses", label:"Courses", icon:Icon.video },
+    { id:"resources", label:"Resources", icon:Icon.folder },
+  ];
+
+  const myDomains = DOMAINS.filter(d => communities.includes(d.id));
+
+  return e("div", { className:"sidebar" },
+    // Logo
+    e("div", { style:{padding:"20px 20px 16px"} },
+      e("div", { style:{display:"flex",alignItems:"center",gap:10} },
+        e("div", { style:{width:36,height:36,background:C.purple,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:16,color:C.gold,flexShrink:0} }, "C"),
+        e("div", {},
+          e("div", { style:{fontSize:13,fontWeight:800,color:C.text,lineHeight:1.2} }, "Community"),
+          e("div", { style:{fontSize:10,color:C.muted,fontWeight:500} }, "Campus2Board")
+        )
+      )
+    ),
+    e("div", { className:"divider", style:{margin:"0 0 8px"} }),
+
+    // Main nav
+    e("div", { style:{flex:1,overflowY:"auto",padding:"6px 0"} },
+      e("div", { style:{padding:"4px 16px 8px",fontSize:10,fontWeight:700,color:"#9CA3AF",letterSpacing:"0.6px",textTransform:"uppercase"} }, "Navigate"),
+      navItems.map(n =>
+        e("div", { key:n.id, className:`nav-item ${page===n.id?"active":""}`, onClick:()=>setPage(n.id) },
+          n.icon(17), n.label
+        )
+      ),
+
+      // My Communities
+      myDomains.length > 0 && e(Fragment, {},
+        e("div", { style:{padding:"16px 16px 8px",fontSize:10,fontWeight:700,color:"#9CA3AF",letterSpacing:"0.6px",textTransform:"uppercase"} }, "My Communities"),
+        myDomains.map(d =>
+          e("div", { key:d.id, className:`nav-item ${page===`domain_${d.id}`?"active":""}`, onClick:()=>setPage(`domain_${d.id}`) },
+            e("span", { style:{fontSize:15} }, d.emoji),
+            e("span", {}, d.label)
+          )
+        )
+      )
+    ),
+
+    // Footer
+    e("div", { className:"divider" }),
+    e("div", { style:{padding:"12px 8px"} },
+      e("div", { style:{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:10,background:"#FAFAFC"} },
+        e(Avatar, { name:studentName, size:30 }),
+        e("div", { style:{flex:1,minWidth:0} },
+          e("div", { style:{fontSize:12,fontWeight:600,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"} }, studentName),
+          e("div", { style:{fontSize:10,color:C.muted} }, "Student")
+        ),
+        e("button", { className:"btn-ghost", style:{padding:6}, onClick:onLogout, title:"Sign out" }, Icon.logout(15))
+      )
+    )
+  );
+}
+
+// ─── Home page ────────────────────────────────────────────────────────────────
+function HomePage({ communities, studentName, setPage }) {
+  const myDomains = DOMAINS.filter(d => communities.includes(d.id));
+  const upcomingEvents = EVENTS.filter(e=>!e.past).slice(0,3);
+  const recentDiscs = DISCUSSIONS.slice(0,3);
+  const featuredMentors = MENTORS.filter(m=>m.status==="online").slice(0,3);
+
+  return e("div", { style:{padding:"32px 36px",maxWidth:1100,margin:"0 auto"} },
+    // Welcome banner
+    e("div", { className:"welcome-banner fade-up", style:{marginBottom:32} },
+      e("div", { style:{display:"flex",alignItems:"center",justifyContent:"space-between"} },
+        e("div", {},
+          e("p", { style:{fontSize:12,fontWeight:600,opacity:.75,letterSpacing:"0.6px",textTransform:"uppercase",marginBottom:4} }, "Good evening"),
+          e("h1", { style:{fontSize:26,fontWeight:800,letterSpacing:"-0.4px",marginBottom:8} }, `Welcome back, ${studentName.split(" ")[0]} 👋`),
+          e("p", { style:{fontSize:13.5,opacity:.85,maxWidth:480,lineHeight:1.6} }, "Your mentor network is active. 2 new discussions in your communities and 1 session starting tonight.")
+        ),
+        e("div", { style:{display:"flex",gap:10,flexShrink:0} },
+          e("div", { style:{background:"rgba(255,255,255,0.12)",borderRadius:12,padding:"14px 18px",textAlign:"center",backdropFilter:"blur(4px)"} },
+            e("div", { style:{fontSize:22,fontWeight:800,color:C.gold} }, MENTORS.filter(m=>m.status==="online").length),
+            e("div", { style:{fontSize:11,opacity:.8,marginTop:2} }, "Mentors Online")
+          ),
+          e("div", { style:{background:"rgba(255,255,255,0.12)",borderRadius:12,padding:"14px 18px",textAlign:"center",backdropFilter:"blur(4px)"} },
+            e("div", { style:{fontSize:22,fontWeight:800,color:C.gold} }, upcomingEvents.length),
+            e("div", { style:{fontSize:11,opacity:.8,marginTop:2} }, "Events This Week")
+          )
+        )
+      )
+    ),
+
+    // My Communities
+    e("div", { className:"home-section fade-up", style:{animationDelay:"0.05s"} },
+      e("div", { style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14} },
+        e("h2", { className:"section-title", style:{margin:0} }, "My Communities"),
+        e("button", { className:"btn-ghost", style:{fontSize:12} }, "Change domains")
+      ),
+      e("div", { style:{display:"flex",gap:12} },
+        myDomains.map(d =>
+          e("div", { key:d.id, className:"card card-hover", style:{padding:"16px 20px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,flex:1}, onClick:()=>setPage(`domain_${d.id}`) },
+            e("span", { style:{fontSize:24} }, d.emoji),
+            e("div", {},
+              e("div", { style:{fontSize:13.5,fontWeight:700,color:C.text} }, d.label),
+              e("div", { style:{fontSize:11,color:C.muted,marginTop:2} }, "Community")
+            ),
+            e("div", { style:{marginLeft:"auto",color:C.lavender} }, Icon.chevronRight())
+          )
+        )
+      )
+    ),
+
+    e("div", { style:{display:"grid",gridTemplateColumns:"1fr 340px",gap:24} },
+      // Left column
+      e("div", {},
+        // Upcoming sessions
+        e("div", { className:"home-section fade-up", style:{animationDelay:"0.08s"} },
+          e("div", { style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14} },
+            e("h2", { className:"section-title", style:{margin:0} }, "Upcoming Mentor Sessions"),
+            e("button", { className:"btn-ghost", style:{fontSize:12}, onClick:()=>setPage("events") }, "View all")
+          ),
+          e("div", { className:"card" },
+            upcomingEvents.slice(0,2).map((ev, i) =>
+              e("div", { key:ev.id, style:{padding:"16px 20px",borderBottom:i<1?"1px solid #EDE9F5":"none"} },
+                e("div", { style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12} },
+                  e("div", { style:{flex:1} },
+                    e("span", { className:"badge badge-blue", style:{marginBottom:6} }, ev.type),
+                    e("div", { style:{fontSize:13.5,fontWeight:600,color:C.text,marginBottom:4} }, ev.title),
+                    e("div", { style:{fontSize:12,color:C.muted,display:"flex",alignItems:"center",gap:6} },
+                      Icon.clock(), ev.date, " · ", ev.host.split("·")[0]
+                    )
+                  ),
+                  ev.registered
+                    ? e("span", { className:"badge badge-green" }, Icon.check(), "Registered")
+                    : e("button", { className:"btn-outline", style:{padding:"6px 14px",fontSize:12,flexShrink:0} }, "Register")
+                )
+              )
+            )
+          )
+        ),
+
+        // Recent discussions
+        e("div", { className:"home-section fade-up", style:{animationDelay:"0.12s"} },
+          e("div", { style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14} },
+            e("h2", { className:"section-title", style:{margin:0} }, "Recent Discussions"),
+            e("button", { className:"btn-ghost", style:{fontSize:12}, onClick:()=>setPage("discussions") }, "View all")
+          ),
+          e("div", { className:"card" },
+            recentDiscs.map((d, i) =>
+              e("div", { key:d.id, className:"disc-card", style:{borderBottom:i<recentDiscs.length-1?"1px solid #EDE9F5":"none"} },
+                e("div", { style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12} },
+                  e("div", { style:{flex:1} },
+                    e("div", { style:{display:"flex",alignItems:"center",gap:8,marginBottom:6} },
+                      e(DomainTag, { domainId:d.domain }),
+                      d.pinned && e("span", { className:"badge badge-gold" }, "Pinned"),
+                      d.answered && e("span", { className:"badge badge-green" }, Icon.check(), "Answered")
+                    ),
+                    e("div", { style:{fontSize:13.5,fontWeight:600,color:C.text,marginBottom:6,lineHeight:1.5} }, d.title),
+                    e("div", { style:{display:"flex",alignItems:"center",gap:14,fontSize:11.5,color:C.muted} },
+                      e("span", {}, d.author),
+                      e("span", {}, d.createdAt),
+                      e("span", { style:{display:"flex",alignItems:"center",gap:4} }, Icon.heart(12), d.likes),
+                      e("span", { style:{display:"flex",alignItems:"center",gap:4} }, Icon.messageSquare(12), d.comments)
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      ),
+
+      // Right column
+      e("div", {},
+        // Featured mentors
+        e("div", { className:"home-section fade-up", style:{animationDelay:"0.1s"} },
+          e("div", { style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14} },
+            e("h2", { className:"section-title", style:{margin:0} }, "Online Now"),
+            e("button", { className:"btn-ghost", style:{fontSize:12}, onClick:()=>setPage("mentors") }, "View all")
+          ),
+          e("div", { className:"card" },
+            featuredMentors.map((m, i) =>
+              e("div", { key:m.id, style:{padding:"14px 18px",borderBottom:i<featuredMentors.length-1?"1px solid #EDE9F5":"none"} },
+                e("div", { style:{display:"flex",alignItems:"center",gap:12} },
+                  e("div", { style:{position:"relative",flexShrink:0} },
+                    e(Avatar, { name:m.name, size:38 }),
+                    e("div", { style:{position:"absolute",bottom:0,right:0,width:10,height:10,borderRadius:"50%",background:"#10B981",border:"2px solid #fff"} })
+                  ),
+                  e("div", { style:{flex:1,minWidth:0} },
+                    e("div", { style:{fontSize:13,fontWeight:700,color:C.text,display:"flex",alignItems:"center",gap:6} },
+                      m.name.split(" ")[0],
+                      m.verified && e("span", { style:{color:C.gold,fontSize:11} }, "✦")
+                    ),
+                    e("div", { style:{fontSize:11,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"} }, m.role, " · ", m.company)
+                  ),
+                  e("button", { className:"btn-outline", style:{padding:"5px 12px",fontSize:11,flexShrink:0} }, "Book")
+                )
+              )
+            )
+          )
+        ),
+
+        // Recommended resources
+        e("div", { className:"home-section fade-up", style:{animationDelay:"0.15s"} },
+          e("div", { style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14} },
+            e("h2", { className:"section-title", style:{margin:0} }, "Recommended Resources"),
+            e("button", { className:"btn-ghost", style:{fontSize:12}, onClick:()=>setPage("resources") }, "View all")
+          ),
+          e("div", { className:"card" },
+            RESOURCES.slice(0,3).map((r, i) =>
+              e("div", { key:r.id, style:{padding:"12px 16px",borderBottom:i<2?"1px solid #EDE9F5":"none",display:"flex",alignItems:"center",gap:12,cursor:"pointer"} },
+                e("div", { style:{width:34,height:34,borderRadius:8,background:C.lavBg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0} },
+                  e("span", { style:{fontSize:14} }, r.type==="Excel"?"📊":"📄")
+                ),
+                e("div", { style:{flex:1,minWidth:0} },
+                  e("div", { style:{fontSize:12.5,fontWeight:600,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"} }, r.title),
+                  e("div", { style:{fontSize:11,color:C.muted,marginTop:2} }, r.type, " · ", r.downloads, " downloads")
+                ),
+                Icon.download(14)
+              )
+            )
+          )
+        )
+      )
+    )
+  );
+}
+
+// ─── Discussions tab ──────────────────────────────────────────────────────────
+function DiscussionsPage({ filter, communities }) {
+  const [tab, setTab] = useState("newest");
+  const [search, setSearch] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [discussions, setDiscussions] = useState(DISCUSSIONS);
+  const [newTitle, setNewTitle] = useState("");
+  const [newBody, setNewBody] = useState("");
+  const [aiImproving, setAiImproving] = useState(false);
+  const [domainFilter, setDomainFilter] = useState(filter||"all");
+
+  const tabs = [
+    { id:"newest", label:"Newest" },
+    { id:"popular", label:"Popular" },
+    { id:"answered", label:"Answered" },
+    { id:"pinned", label:"Pinned" },
+  ];
+
+  function toggleBookmark(id) {
+    setDiscussions(prev => prev.map(d => d.id===id ? {...d, bookmarked:!d.bookmarked} : d));
+  }
+  function toggleLike(id) {
+    setDiscussions(prev => prev.map(d => d.id===id ? {...d, likes:d.liked?d.likes-1:d.likes+1, liked:!d.liked} : d));
+  }
+
+  let filtered = discussions;
+  if (domainFilter !== "all") filtered = filtered.filter(d=>d.domain===domainFilter);
+  if (search) filtered = filtered.filter(d=>d.title.toLowerCase().includes(search.toLowerCase()));
+  if (tab==="popular") filtered = [...filtered].sort((a,b)=>b.likes-a.likes);
+  if (tab==="answered") filtered = filtered.filter(d=>d.answered);
+  if (tab==="pinned") filtered = filtered.filter(d=>d.pinned);
+
+  async function handleImproveWriting() {
+    if (!newBody) return;
+    setAiImproving(true);
+    const improved = await callGemini(`You are a writing assistant. Improve the clarity and professionalism of this text for an MBA student community forum. Keep the same meaning. Return ONLY the improved text, nothing else:\n\n${newBody}`);
+    if (improved) setNewBody(improved);
+    setAiImproving(false);
+  }
+
+  async function handlePost() {
+    if (!newTitle.trim()) return;
+    const disc = { id:`d${Date.now()}`, title:newTitle, body:newBody, author:"You", domain:domainFilter==="all"?(communities[0]||"consulting"):domainFilter, likes:0, comments:0, answers:0, bookmarked:false, pinned:false, tag:"Question", createdAt:"Just now", answered:false };
+    setDiscussions(prev=>[disc,...prev]);
+    setNewTitle(""); setNewBody(""); setCreating(false);
+  }
+
+  return e("div", { style:{padding:"28px 36px",maxWidth:900,margin:"0 auto"} },
+    // Header
+    e("div", { style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24} },
+      e("h1", { style:{fontSize:22,fontWeight:800,color:C.text,letterSpacing:"-0.3px"} }, "Discussions"),
+      e("button", { className:"btn-primary", style:{display:"flex",alignItems:"center",gap:6}, onClick:()=>setCreating(true) },
+        Icon.plus(), "New Discussion"
+      )
+    ),
+
+    // Filters
+    e("div", { style:{display:"flex",gap:12,marginBottom:20,alignItems:"center"} },
+      e("div", { style:{position:"relative",flex:1,maxWidth:320} },
+        e("div", { style:{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:C.muted} }, Icon.search()),
+        e("input", { className:"inp", style:{paddingLeft:38}, placeholder:"Search discussions…", value:search, onChange:ev=>setSearch(ev.target.value) })
+      ),
+      e("select", { className:"inp", style:{width:"auto",minWidth:150}, value:domainFilter, onChange:ev=>setDomainFilter(ev.target.value) },
+        e("option",{value:"all"},"All Domains"),
+        DOMAINS.map(d => e("option",{key:d.id,value:d.id},d.emoji+" "+d.label))
+      )
+    ),
+
+    // Tabs
+    e("div", { className:"card", style:{marginBottom:20,overflow:"hidden"} },
+      e("div", { style:{display:"flex",borderBottom:"1px solid #EDE9F5",paddingTop:4} },
+        tabs.map(t => e("button", { key:t.id, className:`tab ${tab===t.id?"active":""}`, onClick:()=>setTab(t.id) }, t.label))
+      ),
+      e("div", {},
+        filtered.length === 0
+          ? e("div", { style:{padding:40,textAlign:"center",color:C.muted,fontSize:13.5} }, "No discussions found.")
+          : filtered.map(d =>
+              e("div", { key:d.id, className:"disc-card" },
+                e("div", { style:{display:"flex",alignItems:"flex-start",gap:14} },
+                  e("div", { style:{flex:1} },
+                    e("div", { style:{display:"flex",flexWrap:"wrap",alignItems:"center",gap:6,marginBottom:8} },
+                      e(DomainTag,{domainId:d.domain}),
+                      e("span", { className:"badge badge-purple" }, d.tag),
+                      d.pinned && e("span", { className:"badge badge-gold" }, "📌 Pinned"),
+                      d.answered && e("span", { className:"badge badge-green" }, Icon.check(11), " Answered")
+                    ),
+                    e("div", { style:{fontSize:14,fontWeight:700,color:C.text,marginBottom:6,lineHeight:1.5,cursor:"pointer"} }, d.title),
+                    d.body && e("p", { style:{fontSize:13,color:C.muted,marginBottom:10,lineHeight:1.6} }, d.body.slice(0,120)+(d.body.length>120?"…":"")),
+                    e("div", { style:{display:"flex",alignItems:"center",gap:16,fontSize:12,color:C.muted} },
+                      e("span", { style:{fontWeight:600} }, d.author),
+                      e("span", {}, d.createdAt),
+                      e("button", { className:"btn-ghost", style:{padding:"3px 8px",fontSize:12,display:"flex",alignItems:"center",gap:4,color:d.liked?C.error:C.muted}, onClick:()=>toggleLike(d.id) }, Icon.heart(12,d.liked), d.likes),
+                      e("span", { style:{display:"flex",alignItems:"center",gap:4} }, Icon.messageSquare(), d.comments, " comments"),
+                      e("span", { style:{display:"flex",alignItems:"center",gap:4,color:C.success} }, Icon.check(), d.answers, " answers")
+                    )
+                  ),
+                  e("button", { style:{background:"none",border:"none",cursor:"pointer",color:d.bookmarked?C.purple:C.muted,padding:4,marginTop:2}, onClick:()=>toggleBookmark(d.id) }, Icon.bookmark(17,d.bookmarked))
+                )
+              )
+            )
+      )
+    ),
+
+    // Create discussion modal
+    creating && e("div", { className:"modal-overlay", onClick:()=>setCreating(false) },
+      e("div", { className:"modal fade-up", style:{padding:32}, onClick:ev=>ev.stopPropagation() },
+        e("div", { style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24} },
+          e("h2", { style:{fontSize:18,fontWeight:800,color:C.text} }, "Start a Discussion"),
+          e("button", { style:{background:"none",border:"none",cursor:"pointer",color:C.muted}, onClick:()=>setCreating(false) }, Icon.x())
+        ),
+        e("div", { style:{marginBottom:16} },
+          e("label", { style:{fontSize:12,fontWeight:600,color:C.muted,display:"block",marginBottom:5} }, "Title *"),
+          e("input", { className:"inp", placeholder:"e.g. How do I approach FMCG case interviews?", value:newTitle, onChange:ev=>setNewTitle(ev.target.value) })
+        ),
+        e("div", { style:{marginBottom:12} },
+          e("div", { style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5} },
+            e("label", { style:{fontSize:12,fontWeight:600,color:C.muted} }, "Details"),
+            e("button", { style:{background:"none",border:"none",cursor:"pointer",fontSize:11,color:"#1D4ED8",display:"flex",alignItems:"center",gap:4,fontFamily:"Poppins,sans-serif",fontWeight:600}, onClick:handleImproveWriting, disabled:!newBody||aiImproving },
+              Icon.sparkle(), aiImproving ? "Improving…" : "Improve with AI"
+            )
+          ),
+          e("textarea", { className:"inp", placeholder:"Share context so mentors and peers can give better answers…", value:newBody, onChange:ev=>setNewBody(ev.target.value), style:{minHeight:120} })
+        ),
+        e("div", { style:{display:"flex",alignItems:"center",gap:8,marginBottom:20} },
+          e(GeminiTag, { label:"Writes are improved before posting" })
+        ),
+        e("div", { style:{display:"flex",gap:10,justifyContent:"flex-end"} },
+          e("button", { className:"btn-ghost", onClick:()=>setCreating(false) }, "Cancel"),
+          e("button", { className:"btn-primary", onClick:handlePost, disabled:!newTitle.trim() }, "Post Discussion")
+        )
+      )
+    )
+  );
+}
+
+// ─── Mentors page ─────────────────────────────────────────────────────────────
+function MentorsPage({ communities, setActiveMentor }) {
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [domainFilter, setDomainFilter] = useState("all");
+  const [bookingMentor, setBookingMentor] = useState(null);
+
+  let mentors = MENTORS;
+  if (search) mentors = mentors.filter(m=>m.name.toLowerCase().includes(search.toLowerCase())||m.company.toLowerCase().includes(search.toLowerCase()));
+  if (statusFilter!=="all") mentors = mentors.filter(m=>m.status===statusFilter);
+  if (domainFilter!=="all") mentors = mentors.filter(m=>m.communities.includes(domainFilter));
+
+  return e("div", { style:{padding:"28px 36px",maxWidth:1100,margin:"0 auto"} },
+    e("div", { style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24} },
+      e("h1", { style:{fontSize:22,fontWeight:800,color:C.text,letterSpacing:"-0.3px"} }, "Mentor Directory"),
+      e("div", { style:{display:"flex",gap:8,alignItems:"center",fontSize:12,color:C.muted} },
+        e(StatusDot,{status:"online"}), "Online  ",
+        e(StatusDot,{status:"busy"}), "Busy  ",
+        e(StatusDot,{status:"offline"}), "Offline"
+      )
+    ),
+
+    e("div", { style:{display:"flex",gap:12,marginBottom:24} },
+      e("div", { style:{position:"relative",flex:1,maxWidth:320} },
+        e("div", { style:{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:C.muted} }, Icon.search()),
+        e("input", { className:"inp", style:{paddingLeft:38}, placeholder:"Search mentors…", value:search, onChange:ev=>setSearch(ev.target.value) })
+      ),
+      e("select", { className:"inp", style:{width:"auto",minWidth:140}, value:statusFilter, onChange:ev=>setStatusFilter(ev.target.value) },
+        e("option",{value:"all"},"All Status"),
+        e("option",{value:"online"},"🟢 Online"),
+        e("option",{value:"busy"},"🟡 Busy"),
+        e("option",{value:"offline"},"⚫ Offline")
+      ),
+      e("select", { className:"inp", style:{width:"auto",minWidth:160}, value:domainFilter, onChange:ev=>setDomainFilter(ev.target.value) },
+        e("option",{value:"all"},"All Domains"),
+        DOMAINS.map(d => e("option",{key:d.id,value:d.id},d.label))
+      )
+    ),
+
+    e("div", { style:{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:20} },
+      mentors.map(m =>
+        e("div", { key:m.id, className:"card card-hover mentor-card", style:{display:"flex",flexDirection:"column"} },
+          // Top
+          e("div", { style:{display:"flex",alignItems:"flex-start",gap:14,marginBottom:16} },
+            e("div", { style:{position:"relative",flexShrink:0} },
+              e(Avatar, { name:m.name, size:52 }),
+              e("div", { style:{position:"absolute",bottom:1,right:1,width:12,height:12,borderRadius:"50%",background:m.status==="online"?"#10B981":m.status==="busy"?"#F59E0B":"#D1D5DB",border:"2px solid #fff"} })
+            ),
+            e("div", { style:{flex:1,minWidth:0} },
+              e("div", { style:{display:"flex",alignItems:"center",gap:6,marginBottom:2} },
+                e("span", { style:{fontSize:14,fontWeight:800,color:C.text} }, m.name),
+                m.verified && e("span", { className:"verified-badge" }, "✦ Verified")
+              ),
+              e("div", { style:{fontSize:12,color:C.muted,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"} }, m.role),
+              e("div", { style:{fontSize:12,fontWeight:600,color:C.purple,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"} }, m.company)
+            )
+          ),
+
+          // Meta
+          e("div", { style:{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12} },
+            e("span", { className:"badge badge-purple" }, m.exp, " exp"),
+            e("span", { className:"badge", style:{background:"#F8F6FF",color:C.lavender} }, Icon.star(11), " ", m.rating),
+            e("span", { className:"badge badge-blue" }, m.sessions, " sessions")
+          ),
+
+          // Expertise
+          e("div", { style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14} },
+            m.expertise.slice(0,3).map(tag => e("span",{key:tag,className:"pill",style:{background:"#F3F0FA",color:C.purple,fontSize:10}},tag))
+          ),
+
+          // Availability
+          e("div", { style:{background:"#F8F9FC",borderRadius:10,padding:"10px 14px",marginBottom:16,display:"flex",alignItems:"center",gap:8} },
+            Icon.clock(12),
+            e("span", { style:{fontSize:12,color:C.muted} }, "Next available: "),
+            e("span", { style:{fontSize:12,fontWeight:700,color:C.text} }, m.nextAvail)
+          ),
+
+          // Buttons
+          e("div", { style:{display:"flex",gap:8,marginTop:"auto"} },
+            e("button", { className:"btn-outline", style:{flex:1,padding:"8px",fontSize:12}, onClick:()=>setActiveMentor(m) }, "View Profile"),
+            e("button", { className:"btn-gold", style:{flex:1,padding:"8px",fontSize:12}, onClick:()=>setBookingMentor(m) }, "Book Session")
+          )
+        )
+      )
+    ),
+
+    // Booking modal
+    bookingMentor && e(BookingModal, { mentor:bookingMentor, onClose:()=>setBookingMentor(null) })
+  );
+}
+
+// ─── Booking modal ────────────────────────────────────────────────────────────
+function BookingModal({ mentor, onClose }) {
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const [goal, setGoal] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+
+  async function handleBook() {
+    if (!date||!time||!goal) return;
+    // In production: insert into community_bookings table, trigger email + calendar
+    setSubmitted(true);
+  }
+
+  return e("div", { className:"modal-overlay", onClick:onClose },
+    e("div", { className:"modal fade-up", style:{padding:32}, onClick:ev=>ev.stopPropagation() },
+      submitted
+        ? e("div", { style:{textAlign:"center",padding:"24px 0"} },
+            e("div", { style:{fontSize:48,marginBottom:16} }, "🎉"),
+            e("h2", { style:{fontSize:20,fontWeight:800,color:C.text,marginBottom:8} }, "Session Request Sent!"),
+            e("p", { style:{fontSize:13.5,color:C.muted,lineHeight:1.6,maxWidth:380,margin:"0 auto 24px"} }, `Your request has been sent to ${mentor.name}. You'll receive a confirmation once they approve. A Google Calendar invite and Meet link will follow.`),
+            e("button", { className:"btn-primary", onClick:onClose, style:{padding:"10px 28px"} }, "Done")
+          )
+        : e(Fragment, {},
+            e("div", { style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20} },
+              e("h2", { style:{fontSize:18,fontWeight:800,color:C.text} }, "Book a 1-to-1 Session"),
+              e("button", { style:{background:"none",border:"none",cursor:"pointer",color:C.muted}, onClick:onClose }, Icon.x())
+            ),
+            e("div", { style:{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",background:C.lavBg,borderRadius:12,marginBottom:20} },
+              e(Avatar,{name:mentor.name,size:44}),
+              e("div",{},
+                e("div",{style:{fontSize:14,fontWeight:700,color:C.text}},mentor.name),
+                e("div",{style:{fontSize:12,color:C.muted}},mentor.role," · ",mentor.company)
+              )
+            ),
+            e("div", { style:{background:"#FFFBEB",border:"1px solid #FDE68A",borderRadius:10,padding:"10px 14px",marginBottom:20,fontSize:12,color:"#92400E"} },
+              "⏰ Bookings must be made at least 6 hours before the selected slot."
+            ),
+            e("div", { style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14} },
+              e("div",{},
+                e("label",{style:{fontSize:12,fontWeight:600,color:C.muted,display:"block",marginBottom:5}},"Date"),
+                e("input",{className:"inp",type:"date",value:date,onChange:ev=>setDate(ev.target.value),min:new Date().toISOString().split("T")[0]})
+              ),
+              e("div",{},
+                e("label",{style:{fontSize:12,fontWeight:600,color:C.muted,display:"block",marginBottom:5}},"Time"),
+                e("input",{className:"inp",type:"time",value:time,onChange:ev=>setTime(ev.target.value)})
+              )
+            ),
+            e("div", { style:{marginBottom:20} },
+              e("label",{style:{fontSize:12,fontWeight:600,color:C.muted,display:"block",marginBottom:5}},"What do you want to focus on? *"),
+              e("textarea",{className:"inp",placeholder:"e.g. I want to prepare for consulting case interviews and understand how to structure my case approach…",value:goal,onChange:ev=>setGoal(ev.target.value),style:{minHeight:90}})
+            ),
+            e("div", { style:{display:"flex",gap:10,justifyContent:"flex-end"} },
+              e("button",{className:"btn-ghost",onClick:onClose},"Cancel"),
+              e("button",{className:"btn-gold",onClick:handleBook,disabled:!date||!time||!goal,style:{opacity:(!date||!time||!goal)?0.5:1}},"Send Request")
+            )
+          )
+    )
+  );
+}
+
+// ─── Mentor Profile ───────────────────────────────────────────────────────────
+function MentorProfile({ mentor, onBack }) {
+  const [bookingOpen, setBookingOpen] = useState(false);
+
+  return e("div", { style:{padding:"28px 36px",maxWidth:860,margin:"0 auto"} },
+    e("button", { className:"btn-ghost", style:{display:"flex",alignItems:"center",gap:6,marginBottom:20,paddingLeft:0}, onClick:onBack },
+      Icon.arrowLeft(), "Back to Mentors"
+    ),
+    e("div", { className:"card fade-up", style:{padding:32,marginBottom:20} },
+      e("div", { style:{display:"flex",alignItems:"flex-start",gap:24,marginBottom:24} },
+        e("div", { style:{position:"relative",flexShrink:0} },
+          e(Avatar,{name:mentor.name,size:84}),
+          e("div",{style:{position:"absolute",bottom:2,right:2,width:16,height:16,borderRadius:"50%",background:mentor.status==="online"?"#10B981":mentor.status==="busy"?"#F59E0B":"#D1D5DB",border:"3px solid #fff"}})
+        ),
+        e("div", { style:{flex:1} },
+          e("div", { style:{display:"flex",alignItems:"center",gap:10,marginBottom:2} },
+            e("h1",{style:{fontSize:22,fontWeight:800,color:C.text}},mentor.name),
+            mentor.verified && e("span",{className:"verified-badge"},"✦ Verified Mentor")
+          ),
+          e("p",{style:{fontSize:14,color:C.purple,fontWeight:600,marginBottom:4}},mentor.role," at ",mentor.company),
+          e("div",{style:{display:"flex",gap:10,flexWrap:"wrap",marginBottom:12}},
+            e("span",{className:"badge badge-purple"},mentor.exp," experience"),
+            e("span",{className:"badge",style:{background:"#FFF7ED",color:"#C2410C"}},Icon.star(11)," ",mentor.rating," rating"),
+            e("span",{className:"badge badge-blue"},mentor.sessions," sessions"),
+            e("span",{style:{display:"flex",alignItems:"center",gap:5,fontSize:12,color:mentor.status==="online"?"#10B981":mentor.status==="busy"?"#D97706":"#6B7280",fontWeight:600}},
+              e(StatusDot,{status:mentor.status}),mentor.status.charAt(0).toUpperCase()+mentor.status.slice(1)
+            )
+          ),
+          e("p",{style:{fontSize:13.5,color:C.muted,lineHeight:1.7,maxWidth:540}},mentor.bio)
+        ),
+        e("div",{style:{display:"flex",flexDirection:"column",gap:10,flexShrink:0}},
+          e("button",{className:"btn-gold",onClick:()=>setBookingOpen(true),style:{padding:"11px 22px",fontSize:13}},"Book 1-to-1 Session"),
+          e("button",{className:"btn-outline",style:{padding:"10px 22px",fontSize:13}},"Join Live Session")
+        )
+      ),
+
+      e("div",{className:"divider",style:{marginBottom:20}}),
+
+      e("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}},
+        e("div",{},
+          e("h3",{style:{fontSize:13,fontWeight:700,color:C.text,marginBottom:10}},"Areas of Expertise"),
+          e("div",{style:{display:"flex",flexWrap:"wrap",gap:8}},
+            mentor.expertise.map(tag => e("span",{key:tag,className:"pill",style:{background:C.lavBg,color:C.purple,fontSize:12,padding:"5px 14px"}},tag))
+          )
+        ),
+        e("div",{},
+          e("h3",{style:{fontSize:13,fontWeight:700,color:C.text,marginBottom:10}},"Next Available"),
+          e("div",{style:{background:"#F8F9FC",borderRadius:10,padding:"12px 16px",display:"flex",alignItems:"center",gap:8}},
+            Icon.clock(16),
+            e("span",{style:{fontSize:13.5,fontWeight:700,color:C.text}},mentor.nextAvail)
+          )
+        )
+      )
+    ),
+
+    // Reviews section (static)
+    e("div",{className:"card fade-up",style:{padding:24}},
+      e("h2",{style:{fontSize:16,fontWeight:800,color:C.text,marginBottom:16}},"Student Reviews"),
+      [
+        {name:"Ananya R.",rating:5,text:"Priya's case structuring approach completely changed how I think. Got placed at BCG after 3 sessions.",time:"2 weeks ago"},
+        {name:"Rohan S.",rating:5,text:"The best mock interview experience. Brutally honest feedback delivered with genuine care. Highly recommend.",time:"1 month ago"},
+      ].map((r,i) =>
+        e("div",{key:i,style:{borderBottom:i===0?"1px solid #EDE9F5":"none",paddingBottom:i===0?16:0,marginBottom:i===0?16:0}},
+          e("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:6}},
+            e(Avatar,{name:r.name,size:32}),
+            e("div",{},
+              e("div",{style:{fontSize:13,fontWeight:700,color:C.text}},r.name),
+              e("div",{style:{display:"flex",gap:2}},Array.from({length:r.rating},(_,j)=>e("span",{key:j},Icon.star(13))))
+            ),
+            e("span",{style:{marginLeft:"auto",fontSize:11,color:C.muted}},r.time)
+          ),
+          e("p",{style:{fontSize:13,color:C.muted,lineHeight:1.7,paddingLeft:42}},r.text)
+        )
+      )
+    ),
+
+    bookingOpen && e(BookingModal, { mentor, onClose:()=>setBookingOpen(false) })
+  );
+}
+
+// ─── Events page ──────────────────────────────────────────────────────────────
+function EventsPage() {
+  const [tab, setTab] = useState("upcoming");
+  const [events, setEvents] = useState(EVENTS);
+
+  function toggleReg(id) {
+    setEvents(prev=>prev.map(ev=>ev.id===id?{...ev,registered:!ev.registered,registered_count:ev.registered?ev.registered_count-1:ev.registered_count+1}:ev));
+  }
+
+  const shown = events.filter(ev => tab==="upcoming" ? !ev.past : ev.past);
+
+  const typeColors = { AMA:"#EFF6FF:#1D4ED8", "Resume Review":"#F0FDF4:#15803D", Workshop:"#FFF7ED:#C2410C", "Recruiter Talk":"#F5F3FF:#6D28D9", "Industry Session":"#FEF2F2:#DC2626" };
+
+  function getEventBadge(type) {
+    const pair = (typeColors[type]||"#F3F0FA:#4B0082").split(":");
+    return { bg:pair[0], color:pair[1] };
+  }
+
+  return e("div",{style:{padding:"28px 36px",maxWidth:860,margin:"0 auto"}},
+    e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24}},
+      e("h1",{style:{fontSize:22,fontWeight:800,color:C.text,letterSpacing:"-0.3px"}},"Events"),
+      e("div",{style:{display:"flex",gap:8}},
+        ["upcoming","past"].map(t=>
+          e("button",{key:t,className:`tab ${tab===t?"active":""}`,style:{borderBottom:"none",borderRadius:8,border:"1.5px solid",borderColor:tab===t?C.purple:"#EDE9F5",background:tab===t?C.lavBg:"#fff"},onClick:()=>setTab(t)},
+            t.charAt(0).toUpperCase()+t.slice(1)
+          )
+        )
+      )
+    ),
+    e("div",{className:"card"},
+      shown.length===0
+        ? e("div",{style:{padding:40,textAlign:"center",color:C.muted,fontSize:13.5}},"No "+tab+" events.")
+        : shown.map((ev,i)=>{
+          const {bg,color} = getEventBadge(ev.type);
+          const spotsLeft = ev.capacity - ev.registered_count;
+          return e("div",{key:ev.id,className:"event-card"},
+            e("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:16}},
+              e("div",{style:{flex:1}},
+                e("div",{style:{display:"flex",flexWrap:"wrap",alignItems:"center",gap:8,marginBottom:8}},
+                  e("span",{className:"badge",style:{background:bg,color:color}},ev.type),
+                  e(DomainTag,{domainId:ev.domain})
+                ),
+                e("h3",{style:{fontSize:15,fontWeight:700,color:C.text,marginBottom:6,lineHeight:1.4}},ev.title),
+                e("div",{style:{fontSize:12.5,color:C.muted,marginBottom:4,display:"flex",alignItems:"center",gap:6}},Icon.calendar(12)," ",ev.date),
+                e("div",{style:{fontSize:12.5,color:C.muted,marginBottom:8,display:"flex",alignItems:"center",gap:6}},Icon.users(12)," ",ev.host),
+                !ev.past && e("div",{style:{fontSize:12,color:spotsLeft<=5?C.error:C.muted}},
+                  spotsLeft>0 ? `${spotsLeft} spots remaining` : "Fully booked"
+                )
+              ),
+              e("div",{style:{display:"flex",flexDirection:"column",gap:8,flexShrink:0,alignItems:"flex-end"}},
+                !ev.past && (
+                  ev.registered
+                    ? e("span",{className:"badge badge-green",style:{padding:"6px 14px"}},Icon.check()," Registered")
+                    : spotsLeft>0
+                      ? e("button",{className:"btn-primary",style:{padding:"8px 18px",fontSize:12.5},onClick:()=>toggleReg(ev.id)},"Register")
+                      : e("button",{className:"btn-ghost",disabled:true,style:{cursor:"not-allowed"}},"Waitlist")
+                ),
+                ev.past && ev.recording && e("button",{className:"btn-outline",style:{padding:"8px 16px",fontSize:12,display:"flex",alignItems:"center",gap:6}},Icon.play(13)," Watch Recording"),
+                ev.past && !ev.recording && e("span",{style:{fontSize:11,color:C.muted}},"Recording soon")
+              )
+            )
+          );
+        })
+    )
+  );
+}
+
+// ─── Courses page ─────────────────────────────────────────────────────────────
+function CoursesPage({ domainFilter }) {
+  const [courses, setCourses] = useState(COURSES);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState(domainFilter||"all");
+
+  function toggleBookmark(id) {
+    setCourses(prev=>prev.map(c=>c.id===id?{...c,bookmarked:!c.bookmarked}:c));
+  }
+
+  let shown = courses;
+  if (search) shown = shown.filter(c=>c.title.toLowerCase().includes(search.toLowerCase())||c.mentor.toLowerCase().includes(search.toLowerCase()));
+  if (filter!=="all") shown = shown.filter(c=>c.domain===filter);
+
+  const levelColors = { Beginner:"#ECFDF5:#059669", Intermediate:"#FFFBEB:#D97706", "Beginner–Advanced":"#EFF6FF:#1D4ED8" };
+
+  function getLevelBadge(level) {
+    const pair = (levelColors[level]||"#F3F0FA:#4B0082").split(":");
+    return { bg:pair[0], color:pair[1] };
+  }
+
+  return e("div",{style:{padding:"28px 36px",maxWidth:1100,margin:"0 auto"}},
+    e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24}},
+      e("h1",{style:{fontSize:22,fontWeight:800,color:C.text,letterSpacing:"-0.3px"}},"Courses"),
+      e("span",{style:{fontSize:13,color:C.muted}},shown.length," course"+(shown.length!==1?"s":"")+" available")
+    ),
+    e("div",{style:{display:"flex",gap:12,marginBottom:24}},
+      e("div",{style:{position:"relative",flex:1,maxWidth:300}},
+        e("div",{style:{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:C.muted}},Icon.search()),
+        e("input",{className:"inp",style:{paddingLeft:38},placeholder:"Search courses…",value:search,onChange:ev=>setSearch(ev.target.value)})
+      ),
+      e("select",{className:"inp",style:{width:"auto",minWidth:150},value:filter,onChange:ev=>setFilter(ev.target.value)},
+        e("option",{value:"all"},"All Domains"),
+        DOMAINS.map(d=>e("option",{key:d.id,value:d.id},d.emoji+" "+d.label))
+      )
+    ),
+    e("div",{style:{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:20}},
+      shown.map(c=>{
+        const {bg,color} = getLevelBadge(c.level);
+        return e("div",{key:c.id,className:"card card-hover",style:{display:"flex",flexDirection:"column",overflow:"hidden"}},
+          // Thumbnail area
+          e("div",{style:{height:140,background:`linear-gradient(135deg, ${C.purple} 0%, ${C.lavender} 100%)`,display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}},
+            e("div",{style:{width:52,height:52,background:"rgba(255,255,255,0.18)",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff"}},Icon.play(22)),
+            e("div",{style:{position:"absolute",top:10,right:10}},
+              e("button",{style:{background:"rgba(255,255,255,0.9)",border:"none",borderRadius:8,padding:"5px 8px",cursor:"pointer",color:c.bookmarked?C.purple:C.muted},onClick:()=>toggleBookmark(c.id)},Icon.bookmark(14,c.bookmarked))
+            ),
+            e("div",{style:{position:"absolute",bottom:10,left:10}},
+              e("span",{className:"badge",style:{background:bg,color:color}},c.level)
+            )
+          ),
+          // Content
+          e("div",{style:{padding:"18px 18px 20px",flex:1,display:"flex",flexDirection:"column"}},
+            e("div",{style:{display:"flex",alignItems:"center",gap:6,marginBottom:8}},
+              e(DomainTag,{domainId:c.domain})
+            ),
+            e("h3",{style:{fontSize:14,fontWeight:800,color:C.text,marginBottom:6,lineHeight:1.4}},c.title),
+            e("p",{style:{fontSize:12.5,color:C.muted,lineHeight:1.6,flex:1,marginBottom:10}},c.description),
+            e("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}},
+              c.tags.map(t=>e("span",{key:t,className:"pill",style:{background:C.lavBg,color:C.purple,fontSize:10}},t))
+            ),
+            e("div",{className:"divider",style:{marginBottom:10}}),
+            e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",fontSize:12,color:C.muted}},
+              e("span",{style:{display:"flex",alignItems:"center",gap:5}},e(Avatar,{name:c.mentor,size:20}),c.mentor),
+              e("span",{style:{display:"flex",alignItems:"center",gap:5}},Icon.clock(12),c.duration," · ",c.modules," modules")
+            )
+          ),
+          e("div",{style:{padding:"0 18px 18px"}},
+            e("button",{className:"btn-primary",style:{width:"100%",padding:"9px",fontSize:12.5}},"Start Course")
+          )
+        );
+      })
+    )
+  );
+}
+
+// ─── Resources page ───────────────────────────────────────────────────────────
+function ResourcesPage() {
+  const [resources, setResources] = useState(RESOURCES);
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [domainFilter, setDomainFilter] = useState("all");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiRec, setAiRec] = useState(null);
+
+  function toggleBookmark(id) {
+    setResources(prev=>prev.map(r=>r.id===id?{...r,bookmarked:!r.bookmarked}:r));
+  }
+
+  let shown = resources;
+  if (search) shown = shown.filter(r=>r.title.toLowerCase().includes(search.toLowerCase()));
+  if (typeFilter!=="all") shown = shown.filter(r=>r.type===typeFilter);
+  if (domainFilter!=="all") shown = shown.filter(r=>r.domain===domainFilter);
+
+  async function getAIRecommendations() {
+    setAiLoading(true);
+    const rec = await callGemini("You are a career advisor for MBA students. Recommend 3 types of resources an MBA student targeting consulting placements should focus on this week. Keep each recommendation to 1 sentence. Format as a JSON array of strings.");
+    setAiLoading(false);
+    if (rec) {
+      try {
+        const clean = rec.replace(/```json|```/g,"").trim();
+        const parsed = JSON.parse(clean);
+        setAiRec(Array.isArray(parsed) ? parsed : [rec]);
+      } catch { setAiRec([rec]); }
+    }
+  }
+
+  const typeIcon = { PDF:"📄", Excel:"📊", PPT:"📊", Video:"🎥" };
+
+  return e("div",{style:{padding:"28px 36px",maxWidth:900,margin:"0 auto"}},
+    e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24}},
+      e("h1",{style:{fontSize:22,fontWeight:800,color:C.text,letterSpacing:"-0.3px"}},"Resource Library"),
+      e("button",{className:"btn-outline",style:{display:"flex",alignItems:"center",gap:6,fontSize:12.5},onClick:getAIRecommendations,disabled:aiLoading},
+        Icon.sparkle(), aiLoading ? "Finding…" : "AI Recommendations"
+      )
+    ),
+
+    // AI Recommendations
+    aiRec && e("div",{className:"card fade-up",style:{padding:20,marginBottom:20,border:`1px solid #BFDBFE`,background:"#F0F7FF"}},
+      e("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:12}},
+        e(GeminiTag,{label:"Personalized Picks"}),
+        e("button",{style:{background:"none",border:"none",cursor:"pointer",marginLeft:"auto",color:C.muted},onClick:()=>setAiRec(null)},Icon.x(14))
+      ),
+      e("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+        aiRec.map((rec,i)=>e("div",{key:i,style:{display:"flex",gap:10,fontSize:13,color:C.text,lineHeight:1.5}},
+          e("span",{style:{color:C.purple,fontWeight:700,flexShrink:0}},i+1+"."),rec
+        ))
+      )
+    ),
+
+    e("div",{style:{display:"flex",gap:12,marginBottom:20}},
+      e("div",{style:{position:"relative",flex:1,maxWidth:300}},
+        e("div",{style:{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:C.muted}},Icon.search()),
+        e("input",{className:"inp",style:{paddingLeft:38},placeholder:"Search resources…",value:search,onChange:ev=>setSearch(ev.target.value)})
+      ),
+      e("select",{className:"inp",style:{width:"auto",minWidth:120},value:typeFilter,onChange:ev=>setTypeFilter(ev.target.value)},
+        e("option",{value:"all"},"All Types"),
+        e("option",{value:"PDF"},"PDF"),
+        e("option",{value:"Excel"},"Excel"),
+        e("option",{value:"PPT"},"PPT")
+      ),
+      e("select",{className:"inp",style:{width:"auto",minWidth:150},value:domainFilter,onChange:ev=>setDomainFilter(ev.target.value)},
+        e("option",{value:"all"},"All Domains"),
+        DOMAINS.map(d=>e("option",{key:d.id,value:d.id},d.label))
+      )
+    ),
+
+    e("div",{className:"card"},
+      shown.length===0
+        ? e("div",{style:{padding:40,textAlign:"center",color:C.muted,fontSize:13.5}},"No resources found.")
+        : shown.map((r,i)=>
+            e("div",{key:r.id,className:"resource-row"},
+              e("div",{style:{width:40,height:40,borderRadius:10,background:C.lavBg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}},(typeIcon[r.type]||"📄")),
+              e("div",{style:{flex:1,minWidth:0}},
+                e("div",{style:{fontSize:13.5,fontWeight:700,color:C.text,marginBottom:3}},r.title),
+                e("div",{style:{display:"flex",alignItems:"center",gap:8,fontSize:11.5,color:C.muted}},
+                  e("span",{className:"badge badge-purple",style:{fontSize:10}},r.tag),
+                  e(DomainTag,{domainId:r.domain}),
+                  e("span",{},"·",r.size),
+                  e("span",{},r.downloads," downloads")
+                )
+              ),
+              e("div",{style:{display:"flex",alignItems:"center",gap:8,flexShrink:0}},
+                e("button",{style:{background:"none",border:"none",cursor:"pointer",color:r.bookmarked?C.purple:C.muted,padding:4},onClick:()=>toggleBookmark(r.id)},Icon.bookmark(15,r.bookmarked)),
+                e("button",{className:"btn-outline",style:{padding:"6px 14px",fontSize:12,display:"flex",alignItems:"center",gap:6}},Icon.download(),"Download")
+              )
+            )
+          )
+    )
+  );
+}
+
+// ─── Domain Community page ────────────────────────────────────────────────────
+function DomainPage({ domainId, setPage }) {
+  const [tab, setTab] = useState("discussions");
+  const domain = DOMAINS.find(d=>d.id===domainId);
+
+  const tabs = [
+    { id:"discussions", label:"Discussions", icon:Icon.messageCircle },
+    { id:"mentors", label:"Mentors", icon:Icon.users },
+    { id:"events", label:"Events", icon:Icon.calendar },
+    { id:"courses", label:"Courses", icon:Icon.video },
+    { id:"resources", label:"Resources", icon:Icon.folder },
+  ];
+
+  if (!domain) return e("div",{style:{padding:40,textAlign:"center",color:C.muted}},"Community not found.");
+
+  return e("div",{style:{padding:"0",maxWidth:"100%"}},
+    // Domain hero header
+    e("div",{style:{background:`linear-gradient(135deg, ${domain.color}E0 0%, ${domain.color}99 100%)`,padding:"28px 36px 0",color:"#fff"}},
+      e("div",{style:{maxWidth:1100,margin:"0 auto"}},
+        e("div",{style:{display:"flex",alignItems:"center",gap:16,marginBottom:16}},
+          e("span",{style:{fontSize:36}},domain.emoji),
+          e("div",{},
+            e("h1",{style:{fontSize:24,fontWeight:800,letterSpacing:"-0.3px",marginBottom:2}},domain.label," Community"),
+            e("p",{style:{fontSize:13,opacity:.85}},
+              MENTORS.filter(m=>m.communities.includes(domain.id)).length," mentors · ",
+              DISCUSSIONS.filter(d=>d.domain===domain.id).length," discussions · ",
+              COURSES.filter(c=>c.domain===domain.id).length," courses"
+            )
+          )
+        ),
+        e("div",{style:{display:"flex",gap:4,borderBottom:"none"}},
+          tabs.map(t=>
+            e("button",{key:t.id,onClick:()=>setTab(t.id),style:{display:"flex",alignItems:"center",gap:6,padding:"10px 18px",fontSize:13,fontWeight:600,border:"none",borderRadius:"8px 8px 0 0",cursor:"pointer",transition:"all 0.15s",
+              background:tab===t.id?"rgba(255,255,255,1)":"rgba(255,255,255,0.12)",
+              color:tab===t.id?domain.color:"rgba(255,255,255,0.85)",fontFamily:"Poppins,sans-serif"}},
+              t.icon(14), t.label
+            )
+          )
+        )
+      )
+    ),
+
+    // Tab content
+    e("div",{style:{background:C.bg,minHeight:"calc(100vh - 160px)"}},
+      tab==="discussions" && e(DiscussionsPage, { filter:domain.id, communities:[domain.id] }),
+      tab==="mentors" && e(MentorsPage, { communities:[domain.id], setActiveMentor:()=>{} }),
+      tab==="events" && e(EventsPage),
+      tab==="courses" && e(CoursesPage, { domainFilter:domain.id }),
+      tab==="resources" && e(ResourcesPage)
+    )
+  );
+}
+
+// ─── Notifications panel ──────────────────────────────────────────────────────
+function NotificationsPanel({ onClose }) {
+  const notifs = [
+    { id:1, type:"booking", text:"Your session with Priya Sharma is confirmed for today at 7:00 PM.", time:"1h ago", read:false },
+    { id:2, type:"reply", text:"Priya Sharma replied to your discussion: 'Best resources for case prep'", time:"3h ago", read:false },
+    { id:3, type:"event", text:"New event: Resume Review Drop-In by McKinsey — spots filling fast.", time:"5h ago", read:true },
+    { id:4, type:"resource", text:"New resource added to Finance Community: DCF Model — IB Ready", time:"1d ago", read:true },
+    { id:5, type:"course", text:"New course published: Investment Banking Fundamentals by Arjun Mehta", time:"2d ago", read:true },
+  ];
+  const icons = { booking:"📅", reply:"💬", event:"🎪", resource:"📄", course:"🎓" };
+
+  return e("div",{className:"drawer-overlay",onClick:onClose},
+    e("div",{className:"drawer",style:{padding:0},onClick:ev=>ev.stopPropagation()},
+      e("div",{style:{padding:"20px 24px",borderBottom:"1px solid #EDE9F5",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"#fff",zIndex:10}},
+        e("h2",{style:{fontSize:17,fontWeight:800,color:C.text}},"Notifications"),
+        e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.muted},onClick:onClose},Icon.x())
+      ),
+      e("div",{},
+        notifs.map(n=>
+          e("div",{key:n.id,style:{padding:"16px 24px",borderBottom:"1px solid #EDE9F5",background:n.read?"#fff":"#FAFAFF",display:"flex",gap:14,alignItems:"flex-start"}},
+            e("div",{style:{width:36,height:36,borderRadius:10,background:n.read?C.lavBg:`${C.purple}14`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}},icons[n.type]),
+            e("div",{style:{flex:1}},
+              e("p",{style:{fontSize:13,color:C.text,lineHeight:1.6,marginBottom:3}},n.text),
+              e("p",{style:{fontSize:11,color:C.muted}},n.time)
+            ),
+            !n.read && e("div",{style:{width:8,height:8,borderRadius:"50%",background:C.purple,flexShrink:0,marginTop:6}})
+          )
+        )
+      )
+    )
+  );
+}
+
+// ─── Main App ────────────────────────────────────────────────────────────────
+function Community() {
+  const [user, setUser] = useState(null);
+  const [checking, setChecking] = useState(true);
+  const [communities, setCommunities] = useState([]);
+  const [page, setPage] = useState("home");
+  const [studentName, setStudentName] = useState("Student");
+  const [activeMentor, setActiveMentor] = useState(null);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [hasJoined, setHasJoined] = useState(false);
+  const [initError, setInitError] = useState(null);
+
+  useEffect(() => {
+    if (!sb) {
+      setInitError("Could not connect to Campus2Board's authentication service. Please check your network connection and reload.");
+      setChecking(false);
+      return;
+    }
+
+    let unsubscribe = () => {};
+
+    (async () => {
+      try {
+        const { data: { session } } = await sb.auth.getSession();
+        if (session?.user) {
+          setUser(session.user);
+          try {
+            const { data } = await sb.from("students").select("name").eq("id", session.user.id).maybeSingle();
+            if (data?.name) setStudentName(data.name);
+          } catch (profileErr) {
+            console.warn("Could not load student profile:", profileErr);
+          }
+          try {
+            const saved = safeStorage.getItem(`c2b_communities_${session.user.id}`);
+            if (saved) { setCommunities(JSON.parse(saved)); setHasJoined(true); }
+          } catch (storageErr) {
+            console.warn("Could not load saved communities:", storageErr);
+          }
+        }
+      } catch (err) {
+        console.error("Auth session check failed:", err);
+        setInitError("Something went wrong while signing you in. Please reload the page.");
+      } finally {
+        setChecking(false);
+      }
+    })();
+
+    try {
+      const { data } = sb.auth.onAuthStateChange((_, session) => {
+        setUser(session?.user ?? null);
+      });
+      unsubscribe = () => data?.subscription?.unsubscribe?.();
+    } catch (err) {
+      console.warn("Could not attach auth state listener:", err);
+    }
+
+    return () => unsubscribe();
+  }, []);
+
+  function handleDomainComplete(selected) {
+    setCommunities(selected);
+    setHasJoined(true);
+    if (user) {
+      try { safeStorage.setItem(`c2b_communities_${user.id}`, JSON.stringify(selected)); }
+      catch (err) { console.warn("Could not save communities:", err); }
+    }
+  }
+
+  async function handleLogout() {
+    try { if (sb) await sb.auth.signOut(); }
+    catch (err) { console.warn("Sign out error:", err); }
+    setUser(null);
+    setHasJoined(false);
+    setCommunities([]);
+  }
+
+  if (checking) return e("div",{style:{minHeight:"100vh",background:C.purple,display:"flex",alignItems:"center",justifyContent:"center"}},
+    e("div",{style:{textAlign:"center"}},
+      e("div",{style:{width:52,height:52,background:C.gold,borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:22,color:C.purple,margin:"0 auto 20px"}},"C"),
+      e("div",{className:"spinner-gold",style:{width:28,height:28,margin:"0 auto"}})
+    )
+  );
+
+  if (initError) return e("div",{style:{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",padding:24}},
+    e("div",{className:"card",style:{maxWidth:420,padding:32,textAlign:"center"}},
+      e("div",{style:{fontSize:36,marginBottom:12}},"⚠️"),
+      e("h2",{style:{fontSize:17,fontWeight:800,color:C.text,marginBottom:8}},"Couldn't load Community"),
+      e("p",{style:{fontSize:13.5,color:C.muted,lineHeight:1.6,marginBottom:20}},initError),
+      e("button",{className:"btn-primary",onClick:()=>window.location.reload()},"Reload Page")
+    )
+  );
+
+  if (!user) return e(AuthScreen, { onAuth:setUser });
+  if (!hasJoined) return e(DomainPicker, { onComplete:handleDomainComplete });
+
+  // Determine which component to render
+  const isDomainPage = page.startsWith("domain_");
+  const domainId = isDomainPage ? page.replace("domain_","") : null;
+
+  function renderPage() {
+    if (activeMentor) return e(MentorProfile, { mentor:activeMentor, onBack:()=>setActiveMentor(null) });
+    if (isDomainPage) return e(DomainPage, { domainId, setPage });
+    switch(page) {
+      case "home": return e(HomePage, { communities, studentName, setPage });
+      case "discussions": return e(DiscussionsPage, { communities });
+      case "mentors": return e(MentorsPage, { communities, setActiveMentor });
+      case "events": return e(EventsPage);
+      case "courses": return e(CoursesPage);
+      case "resources": return e(ResourcesPage);
+      default: return e(HomePage, { communities, studentName, setPage });
+    }
+  }
+
+  return e("div",{style:{display:"flex",background:C.bg,minHeight:"100vh"}},
+    e(Sidebar, { page, setPage, communities, studentName, onLogout:handleLogout }),
+
+    e("div",{className:"main-content"},
+      // Top bar
+      e("div",{style:{height:56,background:"#fff",borderBottom:"1px solid #EDE9F5",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 28px",position:"sticky",top:0,zIndex:50}},
+        e("div",{style:{display:"flex",alignItems:"center",gap:8}},
+          e("span",{style:{fontSize:13,color:C.muted}},"Campus2Board"),
+          e("span",{style:{fontSize:12,color:"#D1D5DB"}},"·"),
+          e("span",{style:{fontSize:13,fontWeight:700,color:C.purple}},"Community"),
+          e("span",{style:{fontSize:11,background:C.lavBg,color:C.purple,borderRadius:20,padding:"2px 8px",fontWeight:600,marginLeft:6}}, "BETA")
+        ),
+        e("div",{style:{display:"flex",alignItems:"center",gap:10}},
+          e("button",{style:{background:"none",border:"none",cursor:"pointer",color:C.muted,position:"relative",padding:6},onClick:()=>setNotifOpen(true)},
+            Icon.bell(18),
+            e("span",{style:{position:"absolute",top:2,right:2,width:8,height:8,borderRadius:"50%",background:C.gold,border:"2px solid #fff"}})
+          ),
+          e("button",{style:{fontSize:12.5,color:C.purple,fontWeight:600,background:"transparent",display:"flex",alignItems:"center",gap:5,padding:"6px 14px",border:`1.5px solid ${C.purple}`,borderRadius:8,fontFamily:"Poppins,sans-serif"}},"← Back to Campus2Board")
+        )
+      ),
+
+      // Page content
+      e("div",{style:{minHeight:"calc(100vh - 56px)"}}, renderPage())
+    ),
+
+    notifOpen && e(NotificationsPanel, { onClose:()=>setNotifOpen(false) })
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(e(Community));
+window.__c2bAppMounted = true;
+</script>
+</body>
+</html>
