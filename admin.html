@@ -9,7 +9,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <style>
   :root{
     --purple:#4B0082;
@@ -76,8 +75,13 @@
 </head>
 <body>
 <div id="root"></div>
-<script type="text/babel" data-presets="react,env">
-const { useState, useEffect, useMemo, useCallback } = React;
+<script>
+const {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback
+} = React;
 
 // ============================================================
 // CONFIG — already wired to your live Supabase project
@@ -89,88 +93,177 @@ const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // ============================================================
 // SMALL UI HELPERS
 // ============================================================
-function StatusPill({ status }) {
+function StatusPill({
+  status
+}) {
   const map = {
-    pending:   { bg: "#FFF4DA", fg: "#92660B" },
-    approved:  { bg: "#E6F7EC", fg: "#1F9D55" },
-    visible:   { bg: "#E6F7EC", fg: "#1F9D55" },
-    active:    { bg: "#E6F7EC", fg: "#1F9D55" },
-    rejected:  { bg: "#FDEAEA", fg: "#D64545" },
-    suspended: { bg: "#F0E8FF", fg: "#6A3FBF" },
-    inactive:  { bg: "#F1ECF7", fg: "#7C6F93" },
+    pending: {
+      bg: "#FFF4DA",
+      fg: "#92660B"
+    },
+    approved: {
+      bg: "#E6F7EC",
+      fg: "#1F9D55"
+    },
+    visible: {
+      bg: "#E6F7EC",
+      fg: "#1F9D55"
+    },
+    active: {
+      bg: "#E6F7EC",
+      fg: "#1F9D55"
+    },
+    rejected: {
+      bg: "#FDEAEA",
+      fg: "#D64545"
+    },
+    suspended: {
+      bg: "#F0E8FF",
+      fg: "#6A3FBF"
+    },
+    inactive: {
+      bg: "#F1ECF7",
+      fg: "#7C6F93"
+    }
   };
   const c = map[status] || map.inactive;
-  return (
-    <span className="pill" style={{ background: c.bg, color: c.fg }}>
-      {status}
-    </span>
-  );
+  return /*#__PURE__*/React.createElement("span", {
+    className: "pill",
+    style: {
+      background: c.bg,
+      color: c.fg
+    }
+  }, status);
 }
-
-function EmptyState({ title, body }) {
-  return (
-    <div className="card" style={{ padding: 40, textAlign: "center" }}>
-      <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>{title}</div>
-      <div style={{ color: "var(--muted)", fontSize: 14 }}>{body}</div>
-    </div>
-  );
+function EmptyState({
+  title,
+  body
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      padding: 40,
+      textAlign: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 18,
+      fontWeight: 700,
+      marginBottom: 6
+    }
+  }, title), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "var(--muted)",
+      fontSize: 14
+    }
+  }, body));
 }
-
-function Toast({ message, kind, onDone }) {
+function Toast({
+  message,
+  kind,
+  onDone
+}) {
   useEffect(() => {
     const t = setTimeout(onDone, 3000);
     return () => clearTimeout(t);
   }, []);
   const bg = kind === "error" ? "#D64545" : "#34005B";
-  return (
-    <div style={{
-      position: "fixed", bottom: 24, right: 24, background: bg, color: "#fff",
-      padding: "12px 20px", borderRadius: 12, fontSize: 14, fontWeight: 500,
-      boxShadow: "0 6px 20px rgba(0,0,0,.25)", zIndex: 999, maxWidth: 360
-    }}>
-      {message}
-    </div>
-  );
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "fixed",
+      bottom: 24,
+      right: 24,
+      background: bg,
+      color: "#fff",
+      padding: "12px 20px",
+      borderRadius: 12,
+      fontSize: 14,
+      fontWeight: 500,
+      boxShadow: "0 6px 20px rgba(0,0,0,.25)",
+      zIndex: 999,
+      maxWidth: 360
+    }
+  }, message);
 }
-
-function Modal({ title, onClose, children, width = 480 }) {
-  return (
-    <div style={{
-      position: "fixed", inset: 0, background: "rgba(36,27,51,0.45)",
-      display: "flex", alignItems: "center", justifyContent: "center", zIndex: 998, padding: 16
-    }} onClick={onClose}>
-      <div className="card" style={{ width, maxWidth: "100%", maxHeight: "88vh", overflowY: "auto", padding: 24 }}
-           onClick={e => e.stopPropagation()}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <div style={{ fontSize: 18, fontWeight: 700 }}>{title}</div>
-          <button className="btn btn-ghost" style={{ padding: "6px 12px" }} onClick={onClose}>✕</button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
+function Modal({
+  title,
+  onClose,
+  children,
+  width = 480
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "fixed",
+      inset: 0,
+      background: "rgba(36,27,51,0.45)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 998,
+      padding: 16
+    },
+    onClick: onClose
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      width,
+      maxWidth: "100%",
+      maxHeight: "88vh",
+      overflowY: "auto",
+      padding: 24
+    },
+    onClick: e => e.stopPropagation()
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 18,
+      fontWeight: 700
+    }
+  }, title), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-ghost",
+    style: {
+      padding: "6px 12px"
+    },
+    onClick: onClose
+  }, "✕")), children));
 }
 
 // ============================================================
 // LOGIN SCREEN — admin login only, no signup
 // ============================================================
-function LoginScreen({ onLoggedIn, notify }) {
+function LoginScreen({
+  onLoggedIn,
+  notify
+}) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-
   async function handleLogin(e) {
     e.preventDefault();
     setLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const {
+      data,
+      error
+    } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
     if (error) {
       notify(error.message, "error");
       setLoading(false);
       return;
     }
     const uid = data.user.id;
-    const { data: adminRow, error: adminErr } = await supabase
-      .from("admins").select("*").eq("id", uid).maybeSingle();
+    const {
+      data: adminRow,
+      error: adminErr
+    } = await supabase.from("admins").select("*").eq("id", uid).maybeSingle();
     if (adminErr || !adminRow) {
       await supabase.auth.signOut();
       notify("This account isn't registered as an admin.", "error");
@@ -180,511 +273,1015 @@ function LoginScreen({ onLoggedIn, notify }) {
     setLoading(false);
     onLoggedIn(adminRow);
   }
-
-  return (
-    <div style={{
-      minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      minHeight: "100vh",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
       background: "linear-gradient(160deg, var(--purple) 0%, var(--purple-deep) 55%, #1F0040 100%)"
-    }}>
-      <div className="card" style={{ width: 380, padding: 36 }}>
-        <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{
-            width: 52, height: 52, borderRadius: 14, margin: "0 auto 14px",
-            background: "linear-gradient(135deg, var(--purple), var(--gold))",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: "#fff", fontWeight: 800, fontSize: 20
-          }}>C2B</div>
-          <div style={{ fontSize: 20, fontWeight: 800 }}>Admin Portal</div>
-          <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>Campus2Board Community</div>
-        </div>
-        <form onSubmit={handleLogin}>
-          <div style={{ marginBottom: 14 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6 }}>Email</label>
-            <input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="admin@campus2board.com" />
-          </div>
-          <div style={{ marginBottom: 22 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6 }}>Password</label>
-            <input type="password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" />
-          </div>
-          <button className="btn btn-primary" style={{ width: "100%" }} disabled={loading}>
-            {loading ? "Signing in…" : "Sign in"}
-          </button>
-        </form>
-        <div style={{ fontSize: 12, color: "var(--muted)", textAlign: "center", marginTop: 18 }}>
-          Admin accounts are created manually. No public signup.
-        </div>
-      </div>
-    </div>
-  );
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      width: 380,
+      padding: 36
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      marginBottom: 28
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 52,
+      height: 52,
+      borderRadius: 14,
+      margin: "0 auto 14px",
+      background: "linear-gradient(135deg, var(--purple), var(--gold))",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "#fff",
+      fontWeight: 800,
+      fontSize: 20
+    }
+  }, "C2B"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 20,
+      fontWeight: 800
+    }
+  }, "Admin Portal"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: "var(--muted)",
+      marginTop: 4
+    }
+  }, "Campus2Board Community")), /*#__PURE__*/React.createElement("form", {
+    onSubmit: handleLogin
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 13,
+      fontWeight: 600,
+      display: "block",
+      marginBottom: 6
+    }
+  }, "Email"), /*#__PURE__*/React.createElement("input", {
+    type: "email",
+    required: true,
+    value: email,
+    onChange: e => setEmail(e.target.value),
+    placeholder: "admin@campus2board.com"
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 22
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 13,
+      fontWeight: 600,
+      display: "block",
+      marginBottom: 6
+    }
+  }, "Password"), /*#__PURE__*/React.createElement("input", {
+    type: "password",
+    required: true,
+    value: password,
+    onChange: e => setPassword(e.target.value),
+    placeholder: "••••••••"
+  })), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-primary",
+    style: {
+      width: "100%"
+    },
+    disabled: loading
+  }, loading ? "Signing in…" : "Sign in")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "var(--muted)",
+      textAlign: "center",
+      marginTop: 18
+    }
+  }, "Admin accounts are created manually. No public signup.")));
 }
 
 // ============================================================
 // SIDEBAR SHELL
 // ============================================================
-const NAV_ITEMS = [
-  { key: "dashboard", label: "Dashboard", icon: "▦" },
-  { key: "users", label: "Users", icon: "◌" },
-  { key: "mentors", label: "Mentors", icon: "◈" },
-  { key: "communities", label: "Communities", icon: "◆" },
-];
-
-function Sidebar({ active, onNavigate, admin, onLogout }) {
-  return (
-    <div style={{
-      width: 232, flexShrink: 0, background: "linear-gradient(180deg, var(--purple) 0%, var(--purple-deep) 100%)",
-      color: "#fff", minHeight: "100vh", display: "flex", flexDirection: "column", padding: "24px 16px"
-    }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 8px", marginBottom: 32 }}>
-        <div style={{
-          width: 36, height: 36, borderRadius: 10, background: "var(--gold)",
-          display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, color: "#3A2400"
-        }}>C2B</div>
-        <div>
-          <div style={{ fontWeight: 700, fontSize: 14, lineHeight: 1.1 }}>Campus2Board</div>
-          <div style={{ fontSize: 11, opacity: 0.7 }}>Admin</div>
-        </div>
-      </div>
-      <div style={{ flex: 1 }}>
-        {NAV_ITEMS.map(item => (
-          <div key={item.key}
-               onClick={() => onNavigate(item.key)}
-               style={{
-                 display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", borderRadius: 12,
-                 marginBottom: 4, cursor: "pointer", fontSize: 14, fontWeight: 500,
-                 background: active === item.key ? "rgba(245,158,11,0.18)" : "transparent",
-                 color: active === item.key ? "var(--gold)" : "rgba(255,255,255,0.85)",
-                 borderLeft: active === item.key ? "3px solid var(--gold)" : "3px solid transparent"
-               }}>
-            <span style={{ fontSize: 16 }}>{item.icon}</span>
-            {item.label}
-          </div>
-        ))}
-      </div>
-      <div style={{ borderTop: "1px solid rgba(255,255,255,0.15)", paddingTop: 16 }}>
-        <div style={{ fontSize: 13, fontWeight: 600 }}>{admin?.name || "Admin"}</div>
-        <div style={{ fontSize: 11, opacity: 0.65, marginBottom: 12 }}>{admin?.email}</div>
-        <button className="btn" style={{ width: "100%", background: "rgba(255,255,255,0.12)", color: "#fff" }} onClick={onLogout}>
-          Sign out
-        </button>
-      </div>
-    </div>
-  );
+const NAV_ITEMS = [{
+  key: "dashboard",
+  label: "Dashboard",
+  icon: "▦"
+}, {
+  key: "users",
+  label: "Users",
+  icon: "◌"
+}, {
+  key: "mentors",
+  label: "Mentors",
+  icon: "◈"
+}, {
+  key: "communities",
+  label: "Communities",
+  icon: "◆"
+}];
+function Sidebar({
+  active,
+  onNavigate,
+  admin,
+  onLogout
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 232,
+      flexShrink: 0,
+      background: "linear-gradient(180deg, var(--purple) 0%, var(--purple-deep) 100%)",
+      color: "#fff",
+      minHeight: "100vh",
+      display: "flex",
+      flexDirection: "column",
+      padding: "24px 16px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      padding: "0 8px",
+      marginBottom: 32
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
+      background: "var(--gold)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontWeight: 800,
+      color: "#3A2400"
+    }
+  }, "C2B"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      fontSize: 14,
+      lineHeight: 1.1
+    }
+  }, "Campus2Board"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      opacity: 0.7
+    }
+  }, "Admin"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, NAV_ITEMS.map(item => /*#__PURE__*/React.createElement("div", {
+    key: item.key,
+    onClick: () => onNavigate(item.key),
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 12,
+      padding: "11px 14px",
+      borderRadius: 12,
+      marginBottom: 4,
+      cursor: "pointer",
+      fontSize: 14,
+      fontWeight: 500,
+      background: active === item.key ? "rgba(245,158,11,0.18)" : "transparent",
+      color: active === item.key ? "var(--gold)" : "rgba(255,255,255,0.85)",
+      borderLeft: active === item.key ? "3px solid var(--gold)" : "3px solid transparent"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 16
+    }
+  }, item.icon), item.label))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      borderTop: "1px solid rgba(255,255,255,0.15)",
+      paddingTop: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 600
+    }
+  }, admin?.name || "Admin"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      opacity: 0.65,
+      marginBottom: 12
+    }
+  }, admin?.email), /*#__PURE__*/React.createElement("button", {
+    className: "btn",
+    style: {
+      width: "100%",
+      background: "rgba(255,255,255,0.12)",
+      color: "#fff"
+    },
+    onClick: onLogout
+  }, "Sign out")));
 }
 
 // ============================================================
 // DASHBOARD
 // ============================================================
-function Dashboard({ notify }) {
+function Dashboard({
+  notify
+}) {
   const [counts, setCounts] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => { load(); }, []);
-
+  useEffect(() => {
+    load();
+  }, []);
   async function load() {
     setLoading(true);
     try {
-      const [students, pendingMentors, approvedMentors, communities, bookings, openReports] = await Promise.all([
-        supabase.from("students").select("id", { count: "exact", head: true }),
-        supabase.from("mentors").select("id", { count: "exact", head: true }).eq("status", "pending"),
-        supabase.from("mentors").select("id", { count: "exact", head: true }).eq("status", "approved"),
-        supabase.from("communities").select("id", { count: "exact", head: true }).eq("is_active", true),
-        supabase.from("bookings").select("id", { count: "exact", head: true }).eq("status", "pending"),
-        supabase.from("reports").select("id", { count: "exact", head: true }).eq("status", "open"),
-      ]);
+      const [students, pendingMentors, approvedMentors, communities, bookings, openReports] = await Promise.all([supabase.from("students").select("id", {
+        count: "exact",
+        head: true
+      }), supabase.from("mentors").select("id", {
+        count: "exact",
+        head: true
+      }).eq("status", "pending"), supabase.from("mentors").select("id", {
+        count: "exact",
+        head: true
+      }).eq("status", "approved"), supabase.from("communities").select("id", {
+        count: "exact",
+        head: true
+      }).eq("is_active", true), supabase.from("bookings").select("id", {
+        count: "exact",
+        head: true
+      }).eq("status", "pending"), supabase.from("reports").select("id", {
+        count: "exact",
+        head: true
+      }).eq("status", "open")]);
       setCounts({
         students: students.count ?? 0,
         pendingMentors: pendingMentors.count ?? 0,
         approvedMentors: approvedMentors.count ?? 0,
         communities: communities.count ?? 0,
         pendingBookings: bookings.count ?? 0,
-        openReports: openReports.count ?? 0,
+        openReports: openReports.count ?? 0
       });
     } catch (err) {
       notify("Couldn't load dashboard data: " + err.message, "error");
     }
     setLoading(false);
   }
-
-  const widgets = counts ? [
-    { label: "Students", value: counts.students, accent: "var(--purple)" },
-    { label: "Mentors awaiting approval", value: counts.pendingMentors, accent: "var(--gold)" },
-    { label: "Approved mentors", value: counts.approvedMentors, accent: "var(--ok)" },
-    { label: "Active communities", value: counts.communities, accent: "var(--purple)" },
-    { label: "Pending bookings", value: counts.pendingBookings, accent: "var(--gold)" },
-    { label: "Open reports", value: counts.openReports, accent: "var(--danger)" },
-  ] : [];
-
-  return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <div>
-          <div style={{ fontSize: 22, fontWeight: 800 }}>Dashboard</div>
-          <div style={{ fontSize: 13, color: "var(--muted)" }}>Live counts from your Supabase tables.</div>
-        </div>
-        <button className="btn btn-ghost" onClick={load}>Refresh</button>
-      </div>
-      {loading ? (
-        <div style={{ color: "var(--muted)" }}>Loading…</div>
-      ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px,1fr))", gap: 16 }}>
-          {widgets.map(w => (
-            <div key={w.label} className="card" style={{ padding: 20, borderTop: `3px solid ${w.accent}` }}>
-              <div style={{ fontSize: 30, fontWeight: 800 }}>{w.value}</div>
-              <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>{w.label}</div>
-            </div>
-          ))}
-        </div>
-      )}
-      {counts && counts.pendingMentors > 0 && (
-        <div className="card" style={{ marginTop: 20, padding: 18, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <div style={{ fontWeight: 700 }}>{counts.pendingMentors} mentor{counts.pendingMentors > 1 ? "s" : ""} waiting on approval</div>
-            <div style={{ fontSize: 13, color: "var(--muted)" }}>This blocks them from appearing in Community.</div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  const widgets = counts ? [{
+    label: "Students",
+    value: counts.students,
+    accent: "var(--purple)"
+  }, {
+    label: "Mentors awaiting approval",
+    value: counts.pendingMentors,
+    accent: "var(--gold)"
+  }, {
+    label: "Approved mentors",
+    value: counts.approvedMentors,
+    accent: "var(--ok)"
+  }, {
+    label: "Active communities",
+    value: counts.communities,
+    accent: "var(--purple)"
+  }, {
+    label: "Pending bookings",
+    value: counts.pendingBookings,
+    accent: "var(--gold)"
+  }, {
+    label: "Open reports",
+    value: counts.openReports,
+    accent: "var(--danger)"
+  }] : [];
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 22,
+      fontWeight: 800
+    }
+  }, "Dashboard"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: "var(--muted)"
+    }
+  }, "Live counts from your Supabase tables.")), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-ghost",
+    onClick: load
+  }, "Refresh")), loading ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "var(--muted)"
+    }
+  }, "Loading…") : /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fill, minmax(200px,1fr))",
+      gap: 16
+    }
+  }, widgets.map(w => /*#__PURE__*/React.createElement("div", {
+    key: w.label,
+    className: "card",
+    style: {
+      padding: 20,
+      borderTop: `3px solid ${w.accent}`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 30,
+      fontWeight: 800
+    }
+  }, w.value), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: "var(--muted)",
+      marginTop: 4
+    }
+  }, w.label)))), counts && counts.pendingMentors > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      marginTop: 20,
+      padding: 18,
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700
+    }
+  }, counts.pendingMentors, " mentor", counts.pendingMentors > 1 ? "s" : "", " waiting on approval"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: "var(--muted)"
+    }
+  }, "This blocks them from appearing in Community."))));
 }
 
 // ============================================================
 // USERS (students)
 // ============================================================
-function UsersPage({ notify }) {
+function UsersPage({
+  notify
+}) {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
-
-  useEffect(() => { load(); }, []);
-
+  useEffect(() => {
+    load();
+  }, []);
   async function load() {
     setLoading(true);
-    const { data, error } = await supabase.from("students").select("*").order("created_at", { ascending: false });
+    const {
+      data,
+      error
+    } = await supabase.from("students").select("*").order("created_at", {
+      ascending: false
+    });
     if (error) notify("Couldn't load students: " + error.message, "error");
     setStudents(data || []);
     setLoading(false);
   }
-
   async function setStatus(id, status) {
-    const { error } = await supabase.from("students").update({ community_status: status }).eq("id", id);
-    if (error) { notify(error.message, "error"); return; }
+    const {
+      error
+    } = await supabase.from("students").update({
+      community_status: status
+    }).eq("id", id);
+    if (error) {
+      notify(error.message, "error");
+      return;
+    }
     notify(`Student ${status}.`, "ok");
     load();
   }
-
   const filtered = useMemo(() => {
     return students.filter(s => {
-      const matchesSearch = !search ||
-        (s.name || "").toLowerCase().includes(search.toLowerCase()) ||
-        (s.email || "").toLowerCase().includes(search.toLowerCase());
+      const matchesSearch = !search || (s.name || "").toLowerCase().includes(search.toLowerCase()) || (s.email || "").toLowerCase().includes(search.toLowerCase());
       const matchesFilter = filter === "all" || s.community_status === filter;
       return matchesSearch && matchesFilter;
     });
   }, [students, search, filter]);
-
   function exportCSV() {
-    const rows = [["Name", "Email", "Status", "Joined"], ...filtered.map(s => [
-      s.name || "", s.email || "", s.community_status || "", s.created_at || ""
-    ])];
+    const rows = [["Name", "Email", "Status", "Joined"], ...filtered.map(s => [s.name || "", s.email || "", s.community_status || "", s.created_at || ""])];
     const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
+    const blob = new Blob([csv], {
+      type: "text/csv"
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = "students.csv"; a.click();
+    a.href = url;
+    a.download = "students.csv";
+    a.click();
     URL.revokeObjectURL(url);
   }
-
-  return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
-        <div>
-          <div style={{ fontSize: 22, fontWeight: 800 }}>Users</div>
-          <div style={{ fontSize: 13, color: "var(--muted)" }}>{filtered.length} student{filtered.length !== 1 ? "s" : ""}</div>
-        </div>
-        <button className="btn btn-gold" onClick={exportCSV}>Export CSV</button>
-      </div>
-      <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
-        <input style={{ maxWidth: 280 }} placeholder="Search name or email…" value={search} onChange={e => setSearch(e.target.value)} />
-        <select style={{ maxWidth: 200 }} value={filter} onChange={e => setFilter(e.target.value)}>
-          <option value="all">All statuses</option>
-          <option value="approved">Approved</option>
-          <option value="pending">Pending</option>
-          <option value="rejected">Rejected</option>
-          <option value="suspended">Suspended</option>
-        </select>
-      </div>
-      {loading ? <div style={{ color: "var(--muted)" }}>Loading…</div> :
-        filtered.length === 0 ? <EmptyState title="No students found" body="Try adjusting your search or filter." /> : (
-        <div className="card" style={{ overflow: "hidden" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
-            <thead>
-              <tr style={{ background: "var(--lavender-soft)", textAlign: "left" }}>
-                <th style={{ padding: "12px 16px" }}>Name</th>
-                <th style={{ padding: "12px 16px" }}>Email</th>
-                <th style={{ padding: "12px 16px" }}>Status</th>
-                <th style={{ padding: "12px 16px" }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(s => (
-                <tr key={s.id} style={{ borderTop: "1px solid var(--lavender-soft)" }}>
-                  <td style={{ padding: "12px 16px", fontWeight: 600 }}>{s.name || "—"}</td>
-                  <td style={{ padding: "12px 16px", color: "var(--muted)" }}>{s.email}</td>
-                  <td style={{ padding: "12px 16px" }}><StatusPill status={s.community_status} /></td>
-                  <td style={{ padding: "12px 16px", display: "flex", gap: 8 }}>
-                    {s.community_status !== "suspended" && (
-                      <button className="btn btn-danger" style={{ padding: "6px 12px" }} onClick={() => setStatus(s.id, "suspended")}>Suspend</button>
-                    )}
-                    {s.community_status !== "approved" && (
-                      <button className="btn btn-ok" style={{ padding: "6px 12px" }} onClick={() => setStatus(s.id, "approved")}>Approve</button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 20,
+      flexWrap: "wrap",
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 22,
+      fontWeight: 800
+    }
+  }, "Users"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: "var(--muted)"
+    }
+  }, filtered.length, " student", filtered.length !== 1 ? "s" : "")), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-gold",
+    onClick: exportCSV
+  }, "Export CSV")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 12,
+      marginBottom: 16,
+      flexWrap: "wrap"
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    style: {
+      maxWidth: 280
+    },
+    placeholder: "Search name or email…",
+    value: search,
+    onChange: e => setSearch(e.target.value)
+  }), /*#__PURE__*/React.createElement("select", {
+    style: {
+      maxWidth: 200
+    },
+    value: filter,
+    onChange: e => setFilter(e.target.value)
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "all"
+  }, "All statuses"), /*#__PURE__*/React.createElement("option", {
+    value: "approved"
+  }, "Approved"), /*#__PURE__*/React.createElement("option", {
+    value: "pending"
+  }, "Pending"), /*#__PURE__*/React.createElement("option", {
+    value: "rejected"
+  }, "Rejected"), /*#__PURE__*/React.createElement("option", {
+    value: "suspended"
+  }, "Suspended"))), loading ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "var(--muted)"
+    }
+  }, "Loading…") : filtered.length === 0 ? /*#__PURE__*/React.createElement(EmptyState, {
+    title: "No students found",
+    body: "Try adjusting your search or filter."
+  }) : /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      overflow: "hidden"
+    }
+  }, /*#__PURE__*/React.createElement("table", {
+    style: {
+      width: "100%",
+      borderCollapse: "collapse",
+      fontSize: 14
+    }
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", {
+    style: {
+      background: "var(--lavender-soft)",
+      textAlign: "left"
+    }
+  }, /*#__PURE__*/React.createElement("th", {
+    style: {
+      padding: "12px 16px"
+    }
+  }, "Name"), /*#__PURE__*/React.createElement("th", {
+    style: {
+      padding: "12px 16px"
+    }
+  }, "Email"), /*#__PURE__*/React.createElement("th", {
+    style: {
+      padding: "12px 16px"
+    }
+  }, "Status"), /*#__PURE__*/React.createElement("th", {
+    style: {
+      padding: "12px 16px"
+    }
+  }, "Actions"))), /*#__PURE__*/React.createElement("tbody", null, filtered.map(s => /*#__PURE__*/React.createElement("tr", {
+    key: s.id,
+    style: {
+      borderTop: "1px solid var(--lavender-soft)"
+    }
+  }, /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "12px 16px",
+      fontWeight: 600
+    }
+  }, s.name || "—"), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "12px 16px",
+      color: "var(--muted)"
+    }
+  }, s.email), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "12px 16px"
+    }
+  }, /*#__PURE__*/React.createElement(StatusPill, {
+    status: s.community_status
+  })), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "12px 16px",
+      display: "flex",
+      gap: 8
+    }
+  }, s.community_status !== "suspended" && /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-danger",
+    style: {
+      padding: "6px 12px"
+    },
+    onClick: () => setStatus(s.id, "suspended")
+  }, "Suspend"), s.community_status !== "approved" && /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-ok",
+    style: {
+      padding: "6px 12px"
+    },
+    onClick: () => setStatus(s.id, "approved")
+  }, "Approve"))))))));
 }
 
 // ============================================================
 // MENTORS — pending/approved/rejected/suspended tabs, approve/reject, bulk approval
 // ============================================================
-function MentorsPage({ notify }) {
+function MentorsPage({
+  notify
+}) {
   const [mentors, setMentors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("pending");
   const [selected, setSelected] = useState(new Set());
   const [rejectTarget, setRejectTarget] = useState(null);
   const [rejectReason, setRejectReason] = useState("");
-
-  useEffect(() => { load(); }, []);
-
+  useEffect(() => {
+    load();
+  }, []);
   async function load() {
     setLoading(true);
-    const { data, error } = await supabase.from("mentors").select("*").order("created_at", { ascending: false });
+    const {
+      data,
+      error
+    } = await supabase.from("mentors").select("*").order("created_at", {
+      ascending: false
+    });
     if (error) notify("Couldn't load mentors: " + error.message, "error");
     setMentors(data || []);
     setSelected(new Set());
     setLoading(false);
   }
-
   async function approve(id) {
-    const { error } = await supabase.from("mentors").update({ status: "approved", rejection_reason: null }).eq("id", id);
-    if (error) { notify(error.message, "error"); return; }
+    const {
+      error
+    } = await supabase.from("mentors").update({
+      status: "approved",
+      rejection_reason: null
+    }).eq("id", id);
+    if (error) {
+      notify(error.message, "error");
+      return;
+    }
     notify("Mentor approved.", "ok");
     load();
   }
-
   async function bulkApprove() {
     if (selected.size === 0) return;
-    const { error } = await supabase.from("mentors").update({ status: "approved", rejection_reason: null }).in("id", Array.from(selected));
-    if (error) { notify(error.message, "error"); return; }
+    const {
+      error
+    } = await supabase.from("mentors").update({
+      status: "approved",
+      rejection_reason: null
+    }).in("id", Array.from(selected));
+    if (error) {
+      notify(error.message, "error");
+      return;
+    }
     notify(`${selected.size} mentor(s) approved.`, "ok");
     load();
   }
-
   async function reject() {
-    const { error } = await supabase.from("mentors")
-      .update({ status: "rejected", rejection_reason: rejectReason || null })
-      .eq("id", rejectTarget.id);
-    if (error) { notify(error.message, "error"); return; }
+    const {
+      error
+    } = await supabase.from("mentors").update({
+      status: "rejected",
+      rejection_reason: rejectReason || null
+    }).eq("id", rejectTarget.id);
+    if (error) {
+      notify(error.message, "error");
+      return;
+    }
     notify("Mentor rejected.", "ok");
     setRejectTarget(null);
     setRejectReason("");
     load();
   }
-
   async function setStatus(id, status) {
-    const { error } = await supabase.from("mentors").update({ status }).eq("id", id);
-    if (error) { notify(error.message, "error"); return; }
+    const {
+      error
+    } = await supabase.from("mentors").update({
+      status
+    }).eq("id", id);
+    if (error) {
+      notify(error.message, "error");
+      return;
+    }
     notify(`Mentor ${status}.`, "ok");
     load();
   }
-
   const filtered = useMemo(() => mentors.filter(m => m.status === tab), [mentors, tab]);
   const tabs = ["pending", "approved", "rejected", "suspended"];
-
   function toggleSelect(id) {
     const next = new Set(selected);
     next.has(id) ? next.delete(id) : next.add(id);
     setSelected(next);
   }
-
-  return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
-        <div>
-          <div style={{ fontSize: 22, fontWeight: 800 }}>Mentors</div>
-          <div style={{ fontSize: 13, color: "var(--muted)" }}>Approving a mentor makes them bookable in Community.</div>
-        </div>
-        {tab === "pending" && selected.size > 0 && (
-          <button className="btn btn-primary" onClick={bulkApprove}>Approve {selected.size} selected</button>
-        )}
-      </div>
-
-      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-        {tabs.map(t => (
-          <div key={t} onClick={() => setTab(t)}
-               style={{
-                 padding: "8px 16px", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 600,
-                 background: tab === t ? "var(--purple)" : "#fff", color: tab === t ? "#fff" : "var(--ink)",
-                 border: "1.5px solid " + (tab === t ? "var(--purple)" : "var(--lavender)")
-               }}>
-            {t[0].toUpperCase() + t.slice(1)} ({mentors.filter(m => m.status === t).length})
-          </div>
-        ))}
-      </div>
-
-      {loading ? <div style={{ color: "var(--muted)" }}>Loading…</div> :
-        filtered.length === 0 ? <EmptyState title={`No ${tab} mentors`} body="Nothing here right now." /> : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {filtered.map(m => (
-            <div key={m.id} className="card" style={{ padding: 18, display: "flex", gap: 16, alignItems: "flex-start" }}>
-              {tab === "pending" && (
-                <input type="checkbox" checked={selected.has(m.id)} onChange={() => toggleSelect(m.id)} style={{ width: 18, marginTop: 4 }} />
-              )}
-              <div style={{
-                width: 48, height: 48, borderRadius: "50%", background: "var(--lavender)",
-                display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: "var(--purple)",
-                flexShrink: 0, overflow: "hidden"
-              }}>
-                {m.photo_url ? <img src={m.photo_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (m.name || "?")[0]}
-              </div>
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                  <span style={{ fontWeight: 700 }}>{m.name}</span>
-                  <StatusPill status={m.status} />
-                  {m.pending_edit && <StatusPill status="pending" />}
-                </div>
-                <div style={{ fontSize: 13, color: "var(--muted)" }}>{m.designation} {m.company ? `· ${m.company}` : ""}</div>
-                <div style={{ fontSize: 13, color: "var(--muted)" }}>{m.email}</div>
-                {m.short_bio && <div style={{ fontSize: 13, marginTop: 6 }}>{m.short_bio}</div>}
-                {(m.expertise || []).length > 0 && (
-                  <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    {m.expertise.map(e => (
-                      <span key={e} style={{ fontSize: 11, background: "var(--lavender-soft)", color: "var(--purple)", padding: "3px 10px", borderRadius: 999 }}>{e}</span>
-                    ))}
-                  </div>
-                )}
-                {m.status === "rejected" && m.rejection_reason && (
-                  <div style={{ fontSize: 12, color: "var(--danger)", marginTop: 6 }}>Reason: {m.rejection_reason}</div>
-                )}
-              </div>
-              <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-                {m.status === "pending" && (
-                  <>
-                    <button className="btn btn-ok" onClick={() => approve(m.id)}>Approve</button>
-                    <button className="btn btn-danger" onClick={() => setRejectTarget(m)}>Reject</button>
-                  </>
-                )}
-                {m.status === "approved" && (
-                  <button className="btn btn-danger" onClick={() => setStatus(m.id, "suspended")}>Suspend</button>
-                )}
-                {(m.status === "rejected" || m.status === "suspended") && (
-                  <button className="btn btn-ok" onClick={() => approve(m.id)}>Reinstate</button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {rejectTarget && (
-        <Modal title={`Reject ${rejectTarget.name}`} onClose={() => setRejectTarget(null)}>
-          <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6 }}>Reason (shown to mentor)</label>
-          <textarea rows={4} value={rejectReason} onChange={e => setRejectReason(e.target.value)} placeholder="e.g. Profile needs more detail on relevant experience." />
-          <div style={{ display: "flex", gap: 10, marginTop: 16, justifyContent: "flex-end" }}>
-            <button className="btn btn-ghost" onClick={() => setRejectTarget(null)}>Cancel</button>
-            <button className="btn btn-danger" onClick={reject}>Reject mentor</button>
-          </div>
-        </Modal>
-      )}
-    </div>
-  );
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 20,
+      flexWrap: "wrap",
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 22,
+      fontWeight: 800
+    }
+  }, "Mentors"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: "var(--muted)"
+    }
+  }, "Approving a mentor makes them bookable in Community.")), tab === "pending" && selected.size > 0 && /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-primary",
+    onClick: bulkApprove
+  }, "Approve ", selected.size, " selected")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginBottom: 16
+    }
+  }, tabs.map(t => /*#__PURE__*/React.createElement("div", {
+    key: t,
+    onClick: () => setTab(t),
+    style: {
+      padding: "8px 16px",
+      borderRadius: 10,
+      cursor: "pointer",
+      fontSize: 13,
+      fontWeight: 600,
+      background: tab === t ? "var(--purple)" : "#fff",
+      color: tab === t ? "#fff" : "var(--ink)",
+      border: "1.5px solid " + (tab === t ? "var(--purple)" : "var(--lavender)")
+    }
+  }, t[0].toUpperCase() + t.slice(1), " (", mentors.filter(m => m.status === t).length, ")"))), loading ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "var(--muted)"
+    }
+  }, "Loading…") : filtered.length === 0 ? /*#__PURE__*/React.createElement(EmptyState, {
+    title: `No ${tab} mentors`,
+    body: "Nothing here right now."
+  }) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 12
+    }
+  }, filtered.map(m => /*#__PURE__*/React.createElement("div", {
+    key: m.id,
+    className: "card",
+    style: {
+      padding: 18,
+      display: "flex",
+      gap: 16,
+      alignItems: "flex-start"
+    }
+  }, tab === "pending" && /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: selected.has(m.id),
+    onChange: () => toggleSelect(m.id),
+    style: {
+      width: 18,
+      marginTop: 4
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 48,
+      height: 48,
+      borderRadius: "50%",
+      background: "var(--lavender)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontWeight: 700,
+      color: "var(--purple)",
+      flexShrink: 0,
+      overflow: "hidden"
+    }
+  }, m.photo_url ? /*#__PURE__*/React.createElement("img", {
+    src: m.photo_url,
+    alt: "",
+    style: {
+      width: "100%",
+      height: "100%",
+      objectFit: "cover"
+    }
+  }) : (m.name || "?")[0]), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      minWidth: 200
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      alignItems: "center",
+      flexWrap: "wrap"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 700
+    }
+  }, m.name), /*#__PURE__*/React.createElement(StatusPill, {
+    status: m.status
+  }), m.pending_edit && /*#__PURE__*/React.createElement(StatusPill, {
+    status: "pending"
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: "var(--muted)"
+    }
+  }, m.designation, " ", m.company ? `· ${m.company}` : ""), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: "var(--muted)"
+    }
+  }, m.email), m.short_bio && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      marginTop: 6
+    }
+  }, m.short_bio), (m.expertise || []).length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 8,
+      display: "flex",
+      gap: 6,
+      flexWrap: "wrap"
+    }
+  }, m.expertise.map(e => /*#__PURE__*/React.createElement("span", {
+    key: e,
+    style: {
+      fontSize: 11,
+      background: "var(--lavender-soft)",
+      color: "var(--purple)",
+      padding: "3px 10px",
+      borderRadius: 999
+    }
+  }, e))), m.status === "rejected" && m.rejection_reason && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "var(--danger)",
+      marginTop: 6
+    }
+  }, "Reason: ", m.rejection_reason)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      flexShrink: 0
+    }
+  }, m.status === "pending" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-ok",
+    onClick: () => approve(m.id)
+  }, "Approve"), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-danger",
+    onClick: () => setRejectTarget(m)
+  }, "Reject")), m.status === "approved" && /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-danger",
+    onClick: () => setStatus(m.id, "suspended")
+  }, "Suspend"), (m.status === "rejected" || m.status === "suspended") && /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-ok",
+    onClick: () => approve(m.id)
+  }, "Reinstate"))))), rejectTarget && /*#__PURE__*/React.createElement(Modal, {
+    title: `Reject ${rejectTarget.name}`,
+    onClose: () => setRejectTarget(null)
+  }, /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 13,
+      fontWeight: 600,
+      display: "block",
+      marginBottom: 6
+    }
+  }, "Reason (shown to mentor)"), /*#__PURE__*/React.createElement("textarea", {
+    rows: 4,
+    value: rejectReason,
+    onChange: e => setRejectReason(e.target.value),
+    placeholder: "e.g. Profile needs more detail on relevant experience."
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 10,
+      marginTop: 16,
+      justifyContent: "flex-end"
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-ghost",
+    onClick: () => setRejectTarget(null)
+  }, "Cancel"), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-danger",
+    onClick: reject
+  }, "Reject mentor"))));
 }
 
 // ============================================================
 // COMMUNITIES — create/edit/delete/activate, assign mentors, banner/description
 // ============================================================
-function CommunityForm({ initial, mentors, onSave, onClose }) {
+function CommunityForm({
+  initial,
+  mentors,
+  onSave,
+  onClose
+}) {
   const [name, setName] = useState(initial?.name || "");
   const [description, setDescription] = useState(initial?.description || "");
   const [bannerUrl, setBannerUrl] = useState(initial?.banner_url || "");
   const [isActive, setIsActive] = useState(initial ? initial.is_active : true);
   const [assignedMentors, setAssignedMentors] = useState(initial?.assignedMentorIds || []);
   const [saving, setSaving] = useState(false);
-
   async function submit(e) {
     e.preventDefault();
     setSaving(true);
-    await onSave({ name, description, banner_url: bannerUrl, is_active: isActive, assignedMentors });
+    await onSave({
+      name,
+      description,
+      banner_url: bannerUrl,
+      is_active: isActive,
+      assignedMentors
+    });
     setSaving(false);
   }
-
   function toggleMentor(id) {
     setAssignedMentors(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   }
-
-  return (
-    <form onSubmit={submit}>
-      <div style={{ marginBottom: 14 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6 }}>Name</label>
-        <input required value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Finance" />
-      </div>
-      <div style={{ marginBottom: 14 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6 }}>Description</label>
-        <textarea rows={3} value={description} onChange={e => setDescription(e.target.value)} placeholder="What this community is for…" />
-      </div>
-      <div style={{ marginBottom: 14 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6 }}>Banner image URL</label>
-        <input value={bannerUrl} onChange={e => setBannerUrl(e.target.value)} placeholder="https://…" />
-      </div>
-      <div style={{ marginBottom: 14, display: "flex", alignItems: "center", gap: 10 }}>
-        <input type="checkbox" style={{ width: 18 }} checked={isActive} onChange={e => setIsActive(e.target.checked)} id="active-cb" />
-        <label htmlFor="active-cb" style={{ fontSize: 14 }}>Active (visible to students)</label>
-      </div>
-      <div style={{ marginBottom: 18 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6 }}>Assign mentors</label>
-        <div style={{ maxHeight: 160, overflowY: "auto", border: "1.5px solid var(--lavender)", borderRadius: 10, padding: 10 }}>
-          {mentors.filter(m => m.status === "approved").length === 0 && (
-            <div style={{ fontSize: 13, color: "var(--muted)" }}>No approved mentors yet.</div>
-          )}
-          {mentors.filter(m => m.status === "approved").map(m => (
-            <label key={m.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", fontSize: 13 }}>
-              <input type="checkbox" checked={assignedMentors.includes(m.id)} onChange={() => toggleMentor(m.id)} style={{ width: 16 }} />
-              {m.name}
-            </label>
-          ))}
-        </div>
-      </div>
-      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-        <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
-        <button className="btn btn-primary" disabled={saving}>{saving ? "Saving…" : "Save community"}</button>
-      </div>
-    </form>
-  );
+  return /*#__PURE__*/React.createElement("form", {
+    onSubmit: submit
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 13,
+      fontWeight: 600,
+      display: "block",
+      marginBottom: 6
+    }
+  }, "Name"), /*#__PURE__*/React.createElement("input", {
+    required: true,
+    value: name,
+    onChange: e => setName(e.target.value),
+    placeholder: "e.g. Finance"
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 13,
+      fontWeight: 600,
+      display: "block",
+      marginBottom: 6
+    }
+  }, "Description"), /*#__PURE__*/React.createElement("textarea", {
+    rows: 3,
+    value: description,
+    onChange: e => setDescription(e.target.value),
+    placeholder: "What this community is for…"
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 13,
+      fontWeight: 600,
+      display: "block",
+      marginBottom: 6
+    }
+  }, "Banner image URL"), /*#__PURE__*/React.createElement("input", {
+    value: bannerUrl,
+    onChange: e => setBannerUrl(e.target.value),
+    placeholder: "https://…"
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 14,
+      display: "flex",
+      alignItems: "center",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    style: {
+      width: 18
+    },
+    checked: isActive,
+    onChange: e => setIsActive(e.target.checked),
+    id: "active-cb"
+  }), /*#__PURE__*/React.createElement("label", {
+    htmlFor: "active-cb",
+    style: {
+      fontSize: 14
+    }
+  }, "Active (visible to students)")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 18
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 13,
+      fontWeight: 600,
+      display: "block",
+      marginBottom: 6
+    }
+  }, "Assign mentors"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      maxHeight: 160,
+      overflowY: "auto",
+      border: "1.5px solid var(--lavender)",
+      borderRadius: 10,
+      padding: 10
+    }
+  }, mentors.filter(m => m.status === "approved").length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: "var(--muted)"
+    }
+  }, "No approved mentors yet."), mentors.filter(m => m.status === "approved").map(m => /*#__PURE__*/React.createElement("label", {
+    key: m.id,
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      padding: "6px 0",
+      fontSize: 13
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: assignedMentors.includes(m.id),
+    onChange: () => toggleMentor(m.id),
+    style: {
+      width: 16
+    }
+  }), m.name)))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 10,
+      justifyContent: "flex-end"
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "btn btn-ghost",
+    onClick: onClose
+  }, "Cancel"), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-primary",
+    disabled: saving
+  }, saving ? "Saving…" : "Save community")));
 }
-
-function CommunitiesPage({ notify }) {
+function CommunitiesPage({
+  notify
+}) {
   const [communities, setCommunities] = useState([]);
   const [mentors, setMentors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null); // null = closed, {} = new, object = editing
   const [confirmDelete, setConfirmDelete] = useState(null);
-
-  useEffect(() => { load(); }, []);
-
+  useEffect(() => {
+    load();
+  }, []);
   async function load() {
     setLoading(true);
-    const [cRes, mRes, mcRes] = await Promise.all([
-      supabase.from("communities").select("*").order("created_at", { ascending: false }),
-      supabase.from("mentors").select("id,name,status"),
-      supabase.from("mentor_communities").select("*"),
-    ]);
+    const [cRes, mRes, mcRes] = await Promise.all([supabase.from("communities").select("*").order("created_at", {
+      ascending: false
+    }), supabase.from("mentors").select("id,name,status"), supabase.from("mentor_communities").select("*")]);
     if (cRes.error) notify("Couldn't load communities: " + cRes.error.message, "error");
     const mc = mcRes.data || [];
     const withMentors = (cRes.data || []).map(c => ({
@@ -695,110 +1292,202 @@ function CommunitiesPage({ notify }) {
     setMentors(mRes.data || []);
     setLoading(false);
   }
-
   async function saveCommunity(form) {
     let communityId = editing?.id;
     if (communityId) {
-      const { error } = await supabase.from("communities").update({
-        name: form.name, description: form.description, banner_url: form.banner_url, is_active: form.is_active
+      const {
+        error
+      } = await supabase.from("communities").update({
+        name: form.name,
+        description: form.description,
+        banner_url: form.banner_url,
+        is_active: form.is_active
       }).eq("id", communityId);
-      if (error) { notify(error.message, "error"); return; }
+      if (error) {
+        notify(error.message, "error");
+        return;
+      }
     } else {
-      const { data, error } = await supabase.from("communities").insert({
-        name: form.name, description: form.description, banner_url: form.banner_url, is_active: form.is_active
+      const {
+        data,
+        error
+      } = await supabase.from("communities").insert({
+        name: form.name,
+        description: form.description,
+        banner_url: form.banner_url,
+        is_active: form.is_active
       }).select().single();
-      if (error) { notify(error.message, "error"); return; }
+      if (error) {
+        notify(error.message, "error");
+        return;
+      }
       communityId = data.id;
     }
     // sync mentor_communities
     await supabase.from("mentor_communities").delete().eq("community_id", communityId);
     if (form.assignedMentors.length > 0) {
-      await supabase.from("mentor_communities").insert(
-        form.assignedMentors.map(mid => ({ mentor_id: mid, community_id: communityId }))
-      );
+      await supabase.from("mentor_communities").insert(form.assignedMentors.map(mid => ({
+        mentor_id: mid,
+        community_id: communityId
+      })));
     }
     notify(editing?.id ? "Community updated." : "Community created.", "ok");
     setEditing(null);
     load();
   }
-
   async function toggleActive(c) {
-    const { error } = await supabase.from("communities").update({ is_active: !c.is_active }).eq("id", c.id);
-    if (error) { notify(error.message, "error"); return; }
+    const {
+      error
+    } = await supabase.from("communities").update({
+      is_active: !c.is_active
+    }).eq("id", c.id);
+    if (error) {
+      notify(error.message, "error");
+      return;
+    }
     load();
   }
-
   async function deleteCommunity() {
-    const { error } = await supabase.from("communities").delete().eq("id", confirmDelete.id);
-    if (error) { notify(error.message, "error"); setConfirmDelete(null); return; }
+    const {
+      error
+    } = await supabase.from("communities").delete().eq("id", confirmDelete.id);
+    if (error) {
+      notify(error.message, "error");
+      setConfirmDelete(null);
+      return;
+    }
     notify("Community deleted.", "ok");
     setConfirmDelete(null);
     load();
   }
-
-  return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <div>
-          <div style={{ fontSize: 22, fontWeight: 800 }}>Communities</div>
-          <div style={{ fontSize: 13, color: "var(--muted)" }}>Drives the domain list students and mentors see.</div>
-        </div>
-        <button className="btn btn-primary" onClick={() => setEditing({})}>+ New community</button>
-      </div>
-
-      {loading ? <div style={{ color: "var(--muted)" }}>Loading…</div> :
-        communities.length === 0 ? (
-          <EmptyState title="No communities yet" body='Create your first one — e.g. "Finance", "Marketing", "Consulting".' />
-        ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px,1fr))", gap: 16 }}>
-          {communities.map(c => (
-            <div key={c.id} className="card" style={{ overflow: "hidden" }}>
-              <div style={{
-                height: 90, background: c.banner_url ? `url(${c.banner_url}) center/cover` : "linear-gradient(135deg, var(--purple), var(--gold))"
-              }} />
-              <div style={{ padding: 16 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ fontWeight: 700, fontSize: 16 }}>{c.name}</div>
-                  <StatusPill status={c.is_active ? "active" : "inactive"} />
-                </div>
-                <div style={{ fontSize: 13, color: "var(--muted)", margin: "8px 0", minHeight: 36 }}>
-                  {c.description || "No description yet."}
-                </div>
-                <div style={{ fontSize: 12, color: "var(--purple)", marginBottom: 12 }}>
-                  {c.assignedMentorIds.length} mentor{c.assignedMentorIds.length !== 1 ? "s" : ""} assigned
-                </div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button className="btn btn-ghost" style={{ padding: "6px 12px" }} onClick={() => setEditing(c)}>Edit</button>
-                  <button className="btn btn-ghost" style={{ padding: "6px 12px" }} onClick={() => toggleActive(c)}>
-                    {c.is_active ? "Deactivate" : "Activate"}
-                  </button>
-                  <button className="btn btn-danger" style={{ padding: "6px 12px" }} onClick={() => setConfirmDelete(c)}>Delete</button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {editing && (
-        <Modal title={editing.id ? "Edit community" : "New community"} onClose={() => setEditing(null)}>
-          <CommunityForm initial={editing} mentors={mentors} onSave={saveCommunity} onClose={() => setEditing(null)} />
-        </Modal>
-      )}
-
-      {confirmDelete && (
-        <Modal title="Delete community?" onClose={() => setConfirmDelete(null)} width={380}>
-          <div style={{ fontSize: 14, marginBottom: 18 }}>
-            This removes <strong>{confirmDelete.name}</strong> and its mentor assignments. Bookings/courses referencing it keep the reference but lose the link.
-          </div>
-          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-            <button className="btn btn-ghost" onClick={() => setConfirmDelete(null)}>Cancel</button>
-            <button className="btn btn-danger" onClick={deleteCommunity}>Delete</button>
-          </div>
-        </Modal>
-      )}
-    </div>
-  );
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 22,
+      fontWeight: 800
+    }
+  }, "Communities"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: "var(--muted)"
+    }
+  }, "Drives the domain list students and mentors see.")), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-primary",
+    onClick: () => setEditing({})
+  }, "+ New community")), loading ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: "var(--muted)"
+    }
+  }, "Loading…") : communities.length === 0 ? /*#__PURE__*/React.createElement(EmptyState, {
+    title: "No communities yet",
+    body: "Create your first one — e.g. \"Finance\", \"Marketing\", \"Consulting\"."
+  }) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fill, minmax(260px,1fr))",
+      gap: 16
+    }
+  }, communities.map(c => /*#__PURE__*/React.createElement("div", {
+    key: c.id,
+    className: "card",
+    style: {
+      overflow: "hidden"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      height: 90,
+      background: c.banner_url ? `url(${c.banner_url}) center/cover` : "linear-gradient(135deg, var(--purple), var(--gold))"
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      fontSize: 16
+    }
+  }, c.name), /*#__PURE__*/React.createElement(StatusPill, {
+    status: c.is_active ? "active" : "inactive"
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: "var(--muted)",
+      margin: "8px 0",
+      minHeight: 36
+    }
+  }, c.description || "No description yet."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "var(--purple)",
+      marginBottom: 12
+    }
+  }, c.assignedMentorIds.length, " mentor", c.assignedMentorIds.length !== 1 ? "s" : "", " assigned"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      flexWrap: "wrap"
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-ghost",
+    style: {
+      padding: "6px 12px"
+    },
+    onClick: () => setEditing(c)
+  }, "Edit"), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-ghost",
+    style: {
+      padding: "6px 12px"
+    },
+    onClick: () => toggleActive(c)
+  }, c.is_active ? "Deactivate" : "Activate"), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-danger",
+    style: {
+      padding: "6px 12px"
+    },
+    onClick: () => setConfirmDelete(c)
+  }, "Delete")))))), editing && /*#__PURE__*/React.createElement(Modal, {
+    title: editing.id ? "Edit community" : "New community",
+    onClose: () => setEditing(null)
+  }, /*#__PURE__*/React.createElement(CommunityForm, {
+    initial: editing,
+    mentors: mentors,
+    onSave: saveCommunity,
+    onClose: () => setEditing(null)
+  })), confirmDelete && /*#__PURE__*/React.createElement(Modal, {
+    title: "Delete community?",
+    onClose: () => setConfirmDelete(null),
+    width: 380
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      marginBottom: 18
+    }
+  }, "This removes ", /*#__PURE__*/React.createElement("strong", null, confirmDelete.name), " and its mentor assignments. Bookings/courses referencing it keep the reference but lose the link."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 10,
+      justifyContent: "flex-end"
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-ghost",
+    onClick: () => setConfirmDelete(null)
+  }, "Cancel"), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-danger",
+    onClick: deleteCommunity
+  }, "Delete"))));
 }
 
 // ============================================================
@@ -809,55 +1498,88 @@ function App() {
   const [admin, setAdmin] = useState(null);
   const [nav, setNav] = useState("dashboard");
   const [toast, setToast] = useState(null);
-
-  const notify = useCallback((message, kind = "ok") => setToast({ message, kind }), []);
-
+  const notify = useCallback((message, kind = "ok") => setToast({
+    message,
+    kind
+  }), []);
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data }) => {
+    supabase.auth.getSession().then(async ({
+      data
+    }) => {
       if (data.session) {
-        const { data: adminRow } = await supabase.from("admins").select("*").eq("id", data.session.user.id).maybeSingle();
-        if (adminRow) { setAdmin(adminRow); setSession(data.session); }
-        else { await supabase.auth.signOut(); setSession(null); }
+        const {
+          data: adminRow
+        } = await supabase.from("admins").select("*").eq("id", data.session.user.id).maybeSingle();
+        if (adminRow) {
+          setAdmin(adminRow);
+          setSession(data.session);
+        } else {
+          await supabase.auth.signOut();
+          setSession(null);
+        }
       } else {
         setSession(null);
       }
     });
   }, []);
-
   async function handleLogout() {
     await supabase.auth.signOut();
     setSession(null);
     setAdmin(null);
   }
-
   if (session === undefined) {
-    return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)" }}>Loading…</div>;
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "var(--muted)"
+      }
+    }, "Loading…");
   }
-
   if (!session) {
-    return (
-      <>
-        <LoginScreen onLoggedIn={(adminRow) => { setAdmin(adminRow); supabase.auth.getSession().then(({ data }) => setSession(data.session)); }} notify={notify} />
-        {toast && <Toast {...toast} onDone={() => setToast(null)} />}
-      </>
-    );
+    return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(LoginScreen, {
+      onLoggedIn: adminRow => {
+        setAdmin(adminRow);
+        supabase.auth.getSession().then(({
+          data
+        }) => setSession(data.session));
+      },
+      notify: notify
+    }), toast && /*#__PURE__*/React.createElement(Toast, {
+      ...toast,
+      onDone: () => setToast(null)
+    }));
   }
-
-  return (
-    <div style={{ display: "flex" }}>
-      <Sidebar active={nav} onNavigate={setNav} admin={admin} onLogout={handleLogout} />
-      <div style={{ flex: 1, padding: 32, minHeight: "100vh" }}>
-        {nav === "dashboard" && <Dashboard notify={notify} />}
-        {nav === "users" && <UsersPage notify={notify} />}
-        {nav === "mentors" && <MentorsPage notify={notify} />}
-        {nav === "communities" && <CommunitiesPage notify={notify} />}
-      </div>
-      {toast && <Toast {...toast} onDone={() => setToast(null)} />}
-    </div>
-  );
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex"
+    }
+  }, /*#__PURE__*/React.createElement(Sidebar, {
+    active: nav,
+    onNavigate: setNav,
+    admin: admin,
+    onLogout: handleLogout
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      padding: 32,
+      minHeight: "100vh"
+    }
+  }, nav === "dashboard" && /*#__PURE__*/React.createElement(Dashboard, {
+    notify: notify
+  }), nav === "users" && /*#__PURE__*/React.createElement(UsersPage, {
+    notify: notify
+  }), nav === "mentors" && /*#__PURE__*/React.createElement(MentorsPage, {
+    notify: notify
+  }), nav === "communities" && /*#__PURE__*/React.createElement(CommunitiesPage, {
+    notify: notify
+  })), toast && /*#__PURE__*/React.createElement(Toast, {
+    ...toast,
+    onDone: () => setToast(null)
+  }));
 }
-
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
-</script>
+ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(App, null));</script>
 </body>
 </html>
