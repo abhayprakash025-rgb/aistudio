@@ -250,7 +250,7 @@ function AuthScreen({ onAuth }) {
           e("div", { style: { width:52, height:52, background:C.gold, borderRadius:14, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:900, fontSize:24, color:C.purple } }, "C"),
           e("div", { style: { textAlign:"left" } },
             e("div", { style: { color:C.white, fontWeight:800, fontSize:24, letterSpacing:"-0.5px" } }, "Campus2Board"),
-            e("div", { style: { color:C.lavender, fontSize:11, fontWeight:600, letterSpacing:"1.5px", textTransform:"uppercase" } }, "Student Portal")
+            e("div", { style: { color:C.goldLight, fontSize:11, fontWeight:700, letterSpacing:"1.5px", textTransform:"uppercase" } }, "Student Portal")
           )
         ),
         e("p", { style: { color:"rgba(255,255,255,0.5)", fontSize:14, margin:0 } }, "Your MBA career readiness platform")
@@ -1067,13 +1067,14 @@ function Dashboard({ user, onLogout }) {
         e("div", { style: { width:38, height:38, background:C.gold, borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:900, fontSize:20, color:C.purple } }, "C"),
         e("div", null,
           e("div", { style: { color:C.white, fontWeight:800, fontSize:17, letterSpacing:"-0.3px" } }, "Campus2Board"),
-          e("div", { style: { color:C.lavender, fontSize:10, fontWeight:600, letterSpacing:"1px", textTransform:"uppercase" } }, "Student Portal")
+          e("div", { style: { color:C.goldLight, fontSize:10, fontWeight:700, letterSpacing:"1px", textTransform:"uppercase" } }, "Student Portal")
         )
       ),
       e("div", { style: { display:"flex", alignItems:"center", gap:16 } },
+        e("a", { href:"/community", style: { background:C.gold, border:"none", borderRadius:8, padding:"9px 16px", color:C.purple, cursor:"pointer", display:"flex", alignItems:"center", gap:6, fontSize:13, fontWeight:700, textDecoration:"none" } }, "Join Community"),
         e("div", { style: { textAlign:"right" } },
           e("div", { style: { color:C.white, fontSize:14, fontWeight:600 } }, displayName),
-          college && e("div", { style: { color:C.lavender, fontSize:11 } }, college)
+          college && e("div", { style: { color:"#E8E0F7", fontSize:11, fontWeight:500 } }, college)
         ),
         e("button", { onClick:onLogout, style: { background:"rgba(255,255,255,0.1)", border:"none", borderRadius:8, padding:"8px 14px", color:C.white, cursor:"pointer", display:"flex", alignItems:"center", gap:6, fontSize:13, fontWeight:500 } }, e(Icons.logout), " Sign Out")
       )
