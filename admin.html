@@ -6,7 +6,7 @@
 <title>Campus2Board-Admin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/sb.js"></script>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <style>
@@ -86,9 +86,9 @@ const {
 // ============================================================
 // CONFIG — already wired to your live Supabase project
 // ============================================================
-const SUPABASE_URL = "https://yhycjpsbuiidboadvchp.supabase.co";
+const SUPABASE_URL = "https://yhycjpsbuiidboadvchp.sb.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InloeWNqcHNidWlpZGJvYWR2Y2hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMjMxMTUsImV4cCI6MjA5Nzc5OTExNX0.9l639s3cddDx9nHWeAr533yJ996rM4tqSQU8iUrPUWg";
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ============================================================
 // SMALL UI HELPERS
@@ -250,7 +250,7 @@ function LoginScreen({
     const {
       data,
       error
-    } = await supabase.auth.signInWithPassword({
+    } = await sb.auth.signInWithPassword({
       email,
       password
     });
@@ -263,9 +263,9 @@ function LoginScreen({
     const {
       data: adminRow,
       error: adminErr
-    } = await supabase.from("admins").select("*").eq("id", uid).maybeSingle();
+    } = await sb.from("admins").select("*").eq("id", uid).maybeSingle();
     if (adminErr || !adminRow) {
-      await supabase.auth.signOut();
+      await sb.auth.signOut();
       notify("This account isn't registered as an admin.", "error");
       setLoading(false);
       return;
@@ -503,22 +503,22 @@ function Dashboard({
   async function load() {
     setLoading(true);
     try {
-      const [students, pendingMentors, approvedMentors, communities, bookings, openReports] = await Promise.all([supabase.from("students").select("id", {
+      const [students, pendingMentors, approvedMentors, communities, bookings, openReports] = await Promise.all([sb.from("students").select("id", {
         count: "exact",
         head: true
-      }), supabase.from("mentors").select("id", {
+      }), sb.from("mentors").select("id", {
         count: "exact",
         head: true
-      }).eq("status", "pending"), supabase.from("mentors").select("id", {
+      }).eq("status", "pending"), sb.from("mentors").select("id", {
         count: "exact",
         head: true
-      }).eq("status", "approved"), supabase.from("communities").select("id", {
+      }).eq("status", "approved"), sb.from("communities").select("id", {
         count: "exact",
         head: true
-      }).eq("is_active", true), supabase.from("bookings").select("id", {
+      }).eq("is_active", true), sb.from("bookings").select("id", {
         count: "exact",
         head: true
-      }).eq("status", "pending"), supabase.from("reports").select("id", {
+      }).eq("status", "pending"), sb.from("reports").select("id", {
         count: "exact",
         head: true
       }).eq("status", "open")]);
@@ -647,7 +647,7 @@ function UsersPage({
     const {
       data,
       error
-    } = await supabase.from("students").select("*").order("created_at", {
+    } = await sb.from("students").select("*").order("created_at", {
       ascending: false
     });
     if (error) notify("Couldn't load students: " + error.message, "error");
@@ -657,7 +657,7 @@ function UsersPage({
   async function setStatus(id, status) {
     const {
       error
-    } = await supabase.from("students").update({
+    } = await sb.from("students").update({
       community_status: status
     }).eq("id", id);
     if (error) {
@@ -840,7 +840,7 @@ function MentorsPage({
     const {
       data,
       error
-    } = await supabase.from("mentors").select("*").order("created_at", {
+    } = await sb.from("mentors").select("*").order("created_at", {
       ascending: false
     });
     if (error) notify("Couldn't load mentors: " + error.message, "error");
@@ -851,7 +851,7 @@ function MentorsPage({
   async function approve(id) {
     const {
       error
-    } = await supabase.from("mentors").update({
+    } = await sb.from("mentors").update({
       status: "approved",
       rejection_reason: null
     }).eq("id", id);
@@ -866,7 +866,7 @@ function MentorsPage({
     if (selected.size === 0) return;
     const {
       error
-    } = await supabase.from("mentors").update({
+    } = await sb.from("mentors").update({
       status: "approved",
       rejection_reason: null
     }).in("id", Array.from(selected));
@@ -880,7 +880,7 @@ function MentorsPage({
   async function reject() {
     const {
       error
-    } = await supabase.from("mentors").update({
+    } = await sb.from("mentors").update({
       status: "rejected",
       rejection_reason: rejectReason || null
     }).eq("id", rejectTarget.id);
@@ -896,7 +896,7 @@ function MentorsPage({
   async function setStatus(id, status) {
     const {
       error
-    } = await supabase.from("mentors").update({
+    } = await sb.from("mentors").update({
       status
     }).eq("id", id);
     if (error) {
@@ -1279,9 +1279,9 @@ function CommunitiesPage({
   }, []);
   async function load() {
     setLoading(true);
-    const [cRes, mRes, mcRes] = await Promise.all([supabase.from("communities").select("*").order("created_at", {
+    const [cRes, mRes, mcRes] = await Promise.all([sb.from("communities").select("*").order("created_at", {
       ascending: false
-    }), supabase.from("mentors").select("id,name,status"), supabase.from("mentor_communities").select("*")]);
+    }), sb.from("mentors").select("id,name,status"), sb.from("mentor_communities").select("*")]);
     if (cRes.error) notify("Couldn't load communities: " + cRes.error.message, "error");
     const mc = mcRes.data || [];
     const withMentors = (cRes.data || []).map(c => ({
@@ -1297,7 +1297,7 @@ function CommunitiesPage({
     if (communityId) {
       const {
         error
-      } = await supabase.from("communities").update({
+      } = await sb.from("communities").update({
         name: form.name,
         description: form.description,
         banner_url: form.banner_url,
@@ -1311,7 +1311,7 @@ function CommunitiesPage({
       const {
         data,
         error
-      } = await supabase.from("communities").insert({
+      } = await sb.from("communities").insert({
         name: form.name,
         description: form.description,
         banner_url: form.banner_url,
@@ -1324,9 +1324,9 @@ function CommunitiesPage({
       communityId = data.id;
     }
     // sync mentor_communities
-    await supabase.from("mentor_communities").delete().eq("community_id", communityId);
+    await sb.from("mentor_communities").delete().eq("community_id", communityId);
     if (form.assignedMentors.length > 0) {
-      await supabase.from("mentor_communities").insert(form.assignedMentors.map(mid => ({
+      await sb.from("mentor_communities").insert(form.assignedMentors.map(mid => ({
         mentor_id: mid,
         community_id: communityId
       })));
@@ -1338,7 +1338,7 @@ function CommunitiesPage({
   async function toggleActive(c) {
     const {
       error
-    } = await supabase.from("communities").update({
+    } = await sb.from("communities").update({
       is_active: !c.is_active
     }).eq("id", c.id);
     if (error) {
@@ -1350,7 +1350,7 @@ function CommunitiesPage({
   async function deleteCommunity() {
     const {
       error
-    } = await supabase.from("communities").delete().eq("id", confirmDelete.id);
+    } = await sb.from("communities").delete().eq("id", confirmDelete.id);
     if (error) {
       notify(error.message, "error");
       setConfirmDelete(null);
@@ -1503,18 +1503,18 @@ function App() {
     kind
   }), []);
   useEffect(() => {
-    supabase.auth.getSession().then(async ({
+    sb.auth.getSession().then(async ({
       data
     }) => {
       if (data.session) {
         const {
           data: adminRow
-        } = await supabase.from("admins").select("*").eq("id", data.session.user.id).maybeSingle();
+        } = await sb.from("admins").select("*").eq("id", data.session.user.id).maybeSingle();
         if (adminRow) {
           setAdmin(adminRow);
           setSession(data.session);
         } else {
-          await supabase.auth.signOut();
+          await sb.auth.signOut();
           setSession(null);
         }
       } else {
@@ -1523,7 +1523,7 @@ function App() {
     });
   }, []);
   async function handleLogout() {
-    await supabase.auth.signOut();
+    await sb.auth.signOut();
     setSession(null);
     setAdmin(null);
   }
@@ -1542,7 +1542,7 @@ function App() {
     return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(LoginScreen, {
       onLoggedIn: adminRow => {
         setAdmin(adminRow);
-        supabase.auth.getSession().then(({
+        sb.auth.getSession().then(({
           data
         }) => setSession(data.session));
       },
