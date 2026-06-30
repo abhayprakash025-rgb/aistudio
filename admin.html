@@ -82,6 +82,7 @@ const {
   useMemo,
   useCallback
 } = React;
+const h = React.createElement;
 
 // ============================================================
 // CONFIG — already wired to your live Supabase project
@@ -388,6 +389,34 @@ const NAV_ITEMS = [{
   key: "communities",
   label: "Communities",
   icon: "◆"
+}, {
+  key: "sessions",
+  label: "Live Sessions",
+  icon: "▶"
+}, {
+  key: "courses",
+  label: "Courses",
+  icon: "▣"
+}, {
+  key: "resources",
+  label: "Resources",
+  icon: "▤"
+}, {
+  key: "discussions",
+  label: "Discussions",
+  icon: "◫"
+}, {
+  key: "announcements",
+  label: "Announcements",
+  icon: "◔"
+}, {
+  key: "analytics",
+  label: "Analytics",
+  icon: "◐"
+}, {
+  key: "settings",
+  label: "Settings",
+  icon: "⚙"
 }];
 function Sidebar({
   active,
@@ -1488,6 +1517,618 @@ function CommunitiesPage({
     className: "btn btn-danger",
     onClick: deleteCommunity
   }, "Delete"))));
+}
+
+// ============================================================
+// LIVE SESSIONS — moderation (live_sessions table)
+// ============================================================
+function SessionsPage({ notify }) {
+  const [sessions, setSessions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState("upcoming");
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  useEffect(() => { load(); }, []);
+  async function load() {
+    setLoading(true);
+    const { data, error } = await sb.from("live_sessions").select("*, mentors(name)").order("scheduled_at", { ascending: false });
+    if (error) notify("Couldn't load sessions: " + error.message, "error");
+    setSessions(data || []);
+    setLoading(false);
+  }
+  async function cancelSession(id) {
+    const { error } = await sb.from("live_sessions").update({ status: "cancelled" }).eq("id", id);
+    if (error) { notify(error.message, "error"); return; }
+    notify("Session cancelled.", "ok"); load();
+  }
+  async function toggleFeature(s) {
+    const { error } = await sb.from("live_sessions").update({ is_featured: !s.is_featured }).eq("id", s.id);
+    if (error) { notify(error.message, "error"); return; }
+    load();
+  }
+  async function deleteSession() {
+    const { error } = await sb.from("live_sessions").delete().eq("id", confirmDelete.id);
+    if (error) { notify(error.message, "error"); setConfirmDelete(null); return; }
+    notify("Session deleted.", "ok"); setConfirmDelete(null); load();
+  }
+  const tabs = ["upcoming", "completed", "cancelled"];
+  const filtered = useMemo(() => sessions.filter(s => s.status === tab), [sessions, tab]);
+  return h("div", null,
+    h("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 } },
+      h("div", null,
+        h("div", { style: { fontSize: 22, fontWeight: 800 } }, "Live Sessions"),
+        h("div", { style: { fontSize: 13, color: "var(--muted)" } }, "Moderate AMAs, resume reviews, and other live sessions.")
+      )
+    ),
+    h("div", { style: { display: "flex", gap: 8, marginBottom: 16 } },
+      tabs.map(t => h("div", {
+        key: t, onClick: () => setTab(t), style: {
+          padding: "8px 16px", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 600,
+          background: tab === t ? "var(--purple)" : "#fff", color: tab === t ? "#fff" : "var(--ink)",
+          border: "1.5px solid " + (tab === t ? "var(--purple)" : "var(--lavender)")
+        }
+      }, t[0].toUpperCase() + t.slice(1) + " (" + sessions.filter(s => s.status === t).length + ")"))
+    ),
+    loading ? h("div", { style: { color: "var(--muted)" } }, "Loading…")
+      : filtered.length === 0 ? h(EmptyState, { title: `No ${tab} sessions`, body: "Nothing here right now." })
+      : h("div", { style: { display: "flex", flexDirection: "column", gap: 12 } },
+        filtered.map(s => h("div", { key: s.id, className: "card", style: { padding: 18, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" } },
+          h("div", null,
+            h("div", { style: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" } },
+              h("span", { style: { fontWeight: 700 } }, s.title),
+              h(StatusPill, { status: s.status }),
+              s.is_featured && h(StatusPill, { status: "approved" })
+            ),
+            h("div", { style: { fontSize: 13, color: "var(--muted)" } }, s.session_type || "Session", " · ", s.mentors?.name || "Unknown mentor"),
+            h("div", { style: { fontSize: 13, color: "var(--muted)" } }, s.scheduled_at ? new Date(s.scheduled_at).toLocaleString() : "No date set")
+          ),
+          h("div", { style: { display: "flex", gap: 8 } },
+            s.status === "upcoming" && h("button", { className: "btn btn-ghost", style: { padding: "6px 12px" }, onClick: () => toggleFeature(s) }, s.is_featured ? "Unfeature" : "Feature"),
+            s.status === "upcoming" && h("button", { className: "btn btn-danger", style: { padding: "6px 12px" }, onClick: () => cancelSession(s.id) }, "Cancel"),
+            h("button", { className: "btn btn-danger", style: { padding: "6px 12px" }, onClick: () => setConfirmDelete(s) }, "Delete")
+          )
+        ))
+      ),
+    confirmDelete && h(Modal, { title: "Delete session?", onClose: () => setConfirmDelete(null), width: 380 },
+      h("div", { style: { fontSize: 14, marginBottom: 18 } }, "This permanently removes \"", confirmDelete.title, "\"."),
+      h("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end" } },
+        h("button", { className: "btn btn-ghost", onClick: () => setConfirmDelete(null) }, "Cancel"),
+        h("button", { className: "btn btn-danger", onClick: deleteSession }, "Delete")
+      )
+    )
+  );
+}
+
+// ============================================================
+// COURSES — moderation (courses table)
+// ============================================================
+function CoursesPage({ notify }) {
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState("draft");
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  useEffect(() => { load(); }, []);
+  async function load() {
+    setLoading(true);
+    const { data, error } = await sb.from("courses").select("*, mentors(name)").order("created_at", { ascending: false });
+    if (error) notify("Couldn't load courses: " + error.message, "error");
+    setCourses(data || []);
+    setLoading(false);
+  }
+  async function setStatus(id, status) {
+    const { error } = await sb.from("courses").update({ status }).eq("id", id);
+    if (error) { notify(error.message, "error"); return; }
+    notify(`Course ${status}.`, "ok"); load();
+  }
+  async function deleteCourse() {
+    const { error } = await sb.from("courses").delete().eq("id", confirmDelete.id);
+    if (error) { notify(error.message, "error"); setConfirmDelete(null); return; }
+    notify("Course deleted.", "ok"); setConfirmDelete(null); load();
+  }
+  const tabs = ["draft", "published", "archived"];
+  const filtered = useMemo(() => courses.filter(c => c.status === tab), [courses, tab]);
+  return h("div", null,
+    h("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 } },
+      h("div", null,
+        h("div", { style: { fontSize: 22, fontWeight: 800 } }, "Courses"),
+        h("div", { style: { fontSize: 13, color: "var(--muted)" } }, "Review mentor-submitted courses before they go live.")
+      )
+    ),
+    h("div", { style: { display: "flex", gap: 8, marginBottom: 16 } },
+      tabs.map(t => h("div", {
+        key: t, onClick: () => setTab(t), style: {
+          padding: "8px 16px", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 600,
+          background: tab === t ? "var(--purple)" : "#fff", color: tab === t ? "#fff" : "var(--ink)",
+          border: "1.5px solid " + (tab === t ? "var(--purple)" : "var(--lavender)")
+        }
+      }, t[0].toUpperCase() + t.slice(1) + " (" + courses.filter(c => c.status === t).length + ")"))
+    ),
+    loading ? h("div", { style: { color: "var(--muted)" } }, "Loading…")
+      : filtered.length === 0 ? h(EmptyState, { title: `No ${tab} courses`, body: "Nothing here right now." })
+      : h("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px,1fr))", gap: 16 } },
+        filtered.map(c => h("div", { key: c.id, className: "card", style: { overflow: "hidden" } },
+          h("div", { style: { height: 90, background: c.thumbnail_url ? `url(${c.thumbnail_url}) center/cover` : "linear-gradient(135deg, var(--purple), var(--gold))" } }),
+          h("div", { style: { padding: 16 } },
+            h("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
+              h("div", { style: { fontWeight: 700, fontSize: 16 } }, c.title),
+              h(StatusPill, { status: c.status })
+            ),
+            h("div", { style: { fontSize: 13, color: "var(--muted)", margin: "8px 0", minHeight: 36 } }, c.description || "No description."),
+            h("div", { style: { fontSize: 12, color: "var(--purple)", marginBottom: 12 } }, c.mentors?.name || "Unknown mentor"),
+            h("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } },
+              c.status === "draft" && h("button", { className: "btn btn-ok", style: { padding: "6px 12px" }, onClick: () => setStatus(c.id, "published") }, "Publish"),
+              c.status === "published" && h("button", { className: "btn btn-ghost", style: { padding: "6px 12px" }, onClick: () => setStatus(c.id, "archived") }, "Archive"),
+              c.status === "archived" && h("button", { className: "btn btn-ghost", style: { padding: "6px 12px" }, onClick: () => setStatus(c.id, "draft") }, "Restore to draft"),
+              h("button", { className: "btn btn-danger", style: { padding: "6px 12px" }, onClick: () => setConfirmDelete(c) }, "Delete")
+            )
+          )
+        ))
+      ),
+    confirmDelete && h(Modal, { title: "Delete course?", onClose: () => setConfirmDelete(null), width: 380 },
+      h("div", { style: { fontSize: 14, marginBottom: 18 } }, "This permanently removes \"", confirmDelete.title, "\"."),
+      h("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end" } },
+        h("button", { className: "btn btn-ghost", onClick: () => setConfirmDelete(null) }, "Cancel"),
+        h("button", { className: "btn btn-danger", onClick: deleteCourse }, "Delete")
+      )
+    )
+  );
+}
+
+// ============================================================
+// RESOURCES — moderation (resources table)
+// ============================================================
+function ResourcesPage({ notify }) {
+  const [resources, setResources] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState("visible");
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  useEffect(() => { load(); }, []);
+  async function load() {
+    setLoading(true);
+    const { data, error } = await sb.from("resources").select("*, mentors(name)").order("created_at", { ascending: false });
+    if (error) notify("Couldn't load resources: " + error.message, "error");
+    setResources(data || []);
+    setLoading(false);
+  }
+  async function toggleVisible(r) {
+    const status = r.status === "visible" ? "hidden" : "visible";
+    const { error } = await sb.from("resources").update({ status }).eq("id", r.id);
+    if (error) { notify(error.message, "error"); return; }
+    notify(`Resource ${status}.`, "ok"); load();
+  }
+  async function deleteResource() {
+    const { error } = await sb.from("resources").delete().eq("id", confirmDelete.id);
+    if (error) { notify(error.message, "error"); setConfirmDelete(null); return; }
+    notify("Resource deleted.", "ok"); setConfirmDelete(null); load();
+  }
+  const tabs = ["visible", "hidden"];
+  const filtered = useMemo(() => resources.filter(r => r.status === tab), [resources, tab]);
+  return h("div", null,
+    h("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 } },
+      h("div", null,
+        h("div", { style: { fontSize: 22, fontWeight: 800 } }, "Resources"),
+        h("div", { style: { fontSize: 13, color: "var(--muted)" } }, "Moderate mentor-uploaded articles, links, and files.")
+      )
+    ),
+    h("div", { style: { display: "flex", gap: 8, marginBottom: 16 } },
+      tabs.map(t => h("div", {
+        key: t, onClick: () => setTab(t), style: {
+          padding: "8px 16px", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 600,
+          background: tab === t ? "var(--purple)" : "#fff", color: tab === t ? "#fff" : "var(--ink)",
+          border: "1.5px solid " + (tab === t ? "var(--purple)" : "var(--lavender)")
+        }
+      }, t[0].toUpperCase() + t.slice(1) + " (" + resources.filter(r => r.status === t).length + ")"))
+    ),
+    loading ? h("div", { style: { color: "var(--muted)" } }, "Loading…")
+      : filtered.length === 0 ? h(EmptyState, { title: `No ${tab} resources`, body: "Nothing here right now." })
+      : h("div", { style: { display: "flex", flexDirection: "column", gap: 10 } },
+        filtered.map(r => h("div", { key: r.id, className: "card", style: { padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" } },
+          h("div", null,
+            h("div", { style: { display: "flex", gap: 8, alignItems: "center" } },
+              h("span", { style: { fontWeight: 700 } }, r.title),
+              h(StatusPill, { status: r.status })
+            ),
+            h("div", { style: { fontSize: 13, color: "var(--muted)" } }, (r.type || "resource"), " · ", r.mentors?.name || "Unknown mentor")
+          ),
+          h("div", { style: { display: "flex", gap: 8 } },
+            r.url && h("a", { href: r.url, target: "_blank", rel: "noreferrer", className: "btn btn-ghost", style: { padding: "6px 12px", textDecoration: "none" } }, "Open"),
+            h("button", { className: "btn btn-ghost", style: { padding: "6px 12px" }, onClick: () => toggleVisible(r) }, r.status === "visible" ? "Hide" : "Unhide"),
+            h("button", { className: "btn btn-danger", style: { padding: "6px 12px" }, onClick: () => setConfirmDelete(r) }, "Delete")
+          )
+        ))
+      ),
+    confirmDelete && h(Modal, { title: "Delete resource?", onClose: () => setConfirmDelete(null), width: 380 },
+      h("div", { style: { fontSize: 14, marginBottom: 18 } }, "This permanently removes \"", confirmDelete.title, "\"."),
+      h("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end" } },
+        h("button", { className: "btn btn-ghost", onClick: () => setConfirmDelete(null) }, "Cancel"),
+        h("button", { className: "btn btn-danger", onClick: deleteResource }, "Delete")
+      )
+    )
+  );
+}
+
+// ============================================================
+// DISCUSSIONS — moderation (discussions table)
+// ============================================================
+function DiscussionsPage({ notify }) {
+  const [discussions, setDiscussions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState("all");
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  useEffect(() => { load(); }, []);
+  async function load() {
+    setLoading(true);
+    const { data, error } = await sb.from("discussions").select("*, communities(name)").order("created_at", { ascending: false });
+    if (error) notify("Couldn't load discussions: " + error.message, "error");
+    setDiscussions(data || []);
+    setLoading(false);
+  }
+  async function togglePin(d) {
+    const { error } = await sb.from("discussions").update({ is_pinned: !d.is_pinned }).eq("id", d.id);
+    if (error) { notify(error.message, "error"); return; }
+    load();
+  }
+  async function toggleLock(d) {
+    const { error } = await sb.from("discussions").update({ is_locked: !d.is_locked }).eq("id", d.id);
+    if (error) { notify(error.message, "error"); return; }
+    load();
+  }
+  async function toggleVisible(d) {
+    const status = d.status === "hidden" ? "visible" : "hidden";
+    const { error } = await sb.from("discussions").update({ status }).eq("id", d.id);
+    if (error) { notify(error.message, "error"); return; }
+    notify(`Discussion ${status}.`, "ok"); load();
+  }
+  async function deleteDiscussion() {
+    const { error } = await sb.from("discussions").delete().eq("id", confirmDelete.id);
+    if (error) { notify(error.message, "error"); setConfirmDelete(null); return; }
+    notify("Discussion deleted.", "ok"); setConfirmDelete(null); load();
+  }
+  const tabs = ["all", "reported", "pinned", "hidden"];
+  const filtered = useMemo(() => discussions.filter(d => {
+    if (tab === "all") return d.status !== "hidden";
+    if (tab === "reported") return d.status === "reported";
+    if (tab === "pinned") return d.is_pinned;
+    if (tab === "hidden") return d.status === "hidden";
+    return true;
+  }), [discussions, tab]);
+  return h("div", null,
+    h("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 } },
+      h("div", null,
+        h("div", { style: { fontSize: 22, fontWeight: 800 } }, "Discussions"),
+        h("div", { style: { fontSize: 13, color: "var(--muted)" } }, "Moderate community discussions and replies.")
+      )
+    ),
+    h("div", { style: { display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" } },
+      tabs.map(t => h("div", {
+        key: t, onClick: () => setTab(t), style: {
+          padding: "8px 16px", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 600,
+          background: tab === t ? "var(--purple)" : "#fff", color: tab === t ? "#fff" : "var(--ink)",
+          border: "1.5px solid " + (tab === t ? "var(--purple)" : "var(--lavender)")
+        }
+      }, t[0].toUpperCase() + t.slice(1)))
+    ),
+    loading ? h("div", { style: { color: "var(--muted)" } }, "Loading…")
+      : filtered.length === 0 ? h(EmptyState, { title: "No discussions here", body: "Nothing matches this filter." })
+      : h("div", { style: { display: "flex", flexDirection: "column", gap: 12 } },
+        filtered.map(d => h("div", { key: d.id, className: "card", style: { padding: 16 } },
+          h("div", { style: { display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" } },
+            h("div", { style: { flex: 1, minWidth: 200 } },
+              h("div", { style: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" } },
+                h("span", { style: { fontWeight: 700 } }, d.title || "(untitled)"),
+                d.is_pinned && h(StatusPill, { status: "approved" }),
+                d.is_locked && h(StatusPill, { status: "suspended" }),
+                d.status === "reported" && h(StatusPill, { status: "pending" }),
+                d.status === "hidden" && h(StatusPill, { status: "inactive" })
+              ),
+              h("div", { style: { fontSize: 13, color: "var(--muted)" } }, d.author_name || "Unknown", " · ", d.communities?.name || "General"),
+              d.content && h("div", { style: { fontSize: 13, marginTop: 6 } }, d.content.length > 180 ? d.content.slice(0, 180) + "…" : d.content)
+            ),
+            h("div", { style: { display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap" } },
+              h("button", { className: "btn btn-ghost", style: { padding: "6px 12px" }, onClick: () => togglePin(d) }, d.is_pinned ? "Unpin" : "Pin"),
+              h("button", { className: "btn btn-ghost", style: { padding: "6px 12px" }, onClick: () => toggleLock(d) }, d.is_locked ? "Unlock" : "Lock"),
+              h("button", { className: "btn btn-ghost", style: { padding: "6px 12px" }, onClick: () => toggleVisible(d) }, d.status === "hidden" ? "Unhide" : "Hide"),
+              h("button", { className: "btn btn-danger", style: { padding: "6px 12px" }, onClick: () => setConfirmDelete(d) }, "Delete")
+            )
+          )
+        ))
+      ),
+    confirmDelete && h(Modal, { title: "Delete discussion?", onClose: () => setConfirmDelete(null), width: 380 },
+      h("div", { style: { fontSize: 14, marginBottom: 18 } }, "This permanently removes this discussion and its replies."),
+      h("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end" } },
+        h("button", { className: "btn btn-ghost", onClick: () => setConfirmDelete(null) }, "Cancel"),
+        h("button", { className: "btn btn-danger", onClick: deleteDiscussion }, "Delete")
+      )
+    )
+  );
+}
+
+// ============================================================
+// ANNOUNCEMENTS — CRUD + send (announcements table)
+// ============================================================
+function AnnouncementForm({ initial, onSave, onClose }) {
+  const [form, setForm] = useState({
+    title: initial?.title || "",
+    body: initial?.body || "",
+    target_audience: initial?.target_audience || "all",
+    push_notification: initial?.push_notification || false
+  });
+  function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
+  return h("form", { onSubmit: e => { e.preventDefault(); onSave(form); } },
+    h("label", { style: { fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6 } }, "Title"),
+    h("input", { value: form.title, onChange: e => set("title", e.target.value), required: true, style: { marginBottom: 14 } }),
+    h("label", { style: { fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6 } }, "Message"),
+    h("textarea", { rows: 5, value: form.body, onChange: e => set("body", e.target.value), required: true, style: { marginBottom: 14 } }),
+    h("label", { style: { fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6 } }, "Audience"),
+    h("select", { value: form.target_audience, onChange: e => set("target_audience", e.target.value), style: { marginBottom: 14 } },
+      h("option", { value: "all" }, "Everyone"),
+      h("option", { value: "students" }, "Students only"),
+      h("option", { value: "mentors" }, "Mentors only")
+    ),
+    h("label", { style: { display: "flex", alignItems: "center", gap: 8, fontSize: 13, marginBottom: 18 } },
+      h("input", { type: "checkbox", style: { width: 16 }, checked: form.push_notification, onChange: e => set("push_notification", e.target.checked) }),
+      "Send push notification"
+    ),
+    h("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end" } },
+      h("button", { type: "button", className: "btn btn-ghost", onClick: onClose }, "Cancel"),
+      h("button", { type: "submit", className: "btn btn-primary" }, initial?.id ? "Save changes" : "Create announcement")
+    )
+  );
+}
+function AnnouncementsPage({ notify }) {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  useEffect(() => { load(); }, []);
+  async function load() {
+    setLoading(true);
+    const { data, error } = await sb.from("announcements").select("*").order("created_at", { ascending: false });
+    if (error) notify("Couldn't load announcements: " + error.message, "error");
+    setItems(data || []);
+    setLoading(false);
+  }
+  async function save(form) {
+    if (editing?.id) {
+      const { error } = await sb.from("announcements").update({
+        title: form.title, body: form.body, target_audience: form.target_audience, push_notification: form.push_notification
+      }).eq("id", editing.id);
+      if (error) { notify(error.message, "error"); return; }
+      notify("Announcement updated.", "ok");
+    } else {
+      const { error } = await sb.from("announcements").insert({
+        title: form.title, body: form.body, target_audience: form.target_audience, push_notification: form.push_notification
+      });
+      if (error) { notify(error.message, "error"); return; }
+      notify("Announcement created.", "ok");
+    }
+    setEditing(null); load();
+  }
+  async function sendNow(a) {
+    const { error } = await sb.from("announcements").update({ sent_at: new Date().toISOString() }).eq("id", a.id);
+    if (error) { notify(error.message, "error"); return; }
+    notify("Announcement sent.", "ok"); load();
+  }
+  async function deleteAnnouncement() {
+    const { error } = await sb.from("announcements").delete().eq("id", confirmDelete.id);
+    if (error) { notify(error.message, "error"); setConfirmDelete(null); return; }
+    notify("Announcement deleted.", "ok"); setConfirmDelete(null); load();
+  }
+  return h("div", null,
+    h("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 } },
+      h("div", null,
+        h("div", { style: { fontSize: 22, fontWeight: 800 } }, "Announcements"),
+        h("div", { style: { fontSize: 13, color: "var(--muted)" } }, "Broadcast messages to students and/or mentors.")
+      ),
+      h("button", { className: "btn btn-primary", onClick: () => setEditing({}) }, "+ New announcement")
+    ),
+    loading ? h("div", { style: { color: "var(--muted)" } }, "Loading…")
+      : items.length === 0 ? h(EmptyState, { title: "No announcements yet", body: "Create your first one." })
+      : h("div", { style: { display: "flex", flexDirection: "column", gap: 12 } },
+        items.map(a => h("div", { key: a.id, className: "card", style: { padding: 16 } },
+          h("div", { style: { display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" } },
+            h("div", { style: { flex: 1, minWidth: 200 } },
+              h("div", { style: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" } },
+                h("span", { style: { fontWeight: 700 } }, a.title),
+                h(StatusPill, { status: a.sent_at ? "approved" : "pending" }),
+                a.push_notification && h(StatusPill, { status: "inactive" })
+              ),
+              h("div", { style: { fontSize: 13, color: "var(--muted)", margin: "4px 0" } }, a.body),
+              h("div", { style: { fontSize: 12, color: "var(--purple)" } }, "Audience: ", a.target_audience)
+            ),
+            h("div", { style: { display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap" } },
+              !a.sent_at && h("button", { className: "btn btn-ok", style: { padding: "6px 12px" }, onClick: () => sendNow(a) }, "Send now"),
+              h("button", { className: "btn btn-ghost", style: { padding: "6px 12px" }, onClick: () => setEditing(a) }, "Edit"),
+              h("button", { className: "btn btn-danger", style: { padding: "6px 12px" }, onClick: () => setConfirmDelete(a) }, "Delete")
+            )
+          )
+        ))
+      ),
+    editing && h(Modal, { title: editing.id ? "Edit announcement" : "New announcement", onClose: () => setEditing(null) },
+      h(AnnouncementForm, { initial: editing, onSave: save, onClose: () => setEditing(null) })
+    ),
+    confirmDelete && h(Modal, { title: "Delete announcement?", onClose: () => setConfirmDelete(null), width: 380 },
+      h("div", { style: { fontSize: 14, marginBottom: 18 } }, "This permanently removes \"", confirmDelete.title, "\"."),
+      h("div", { style: { display: "flex", gap: 10, justifyContent: "flex-end" } },
+        h("button", { className: "btn btn-ghost", onClick: () => setConfirmDelete(null) }, "Cancel"),
+        h("button", { className: "btn btn-danger", onClick: deleteAnnouncement }, "Delete")
+      )
+    )
+  );
+}
+
+// ============================================================
+// SETTINGS — single-row app_settings table
+// ============================================================
+function SettingsPage({ notify }) {
+  const [settings, setSettings] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => { load(); }, []);
+  async function load() {
+    setLoading(true);
+    const { data, error } = await sb.from("app_settings").select("*").limit(1).maybeSingle();
+    if (error) { notify("Couldn't load settings: " + error.message, "error"); setLoading(false); return; }
+    setSettings(data || {
+      id: 1, platform_name: "Campus2Board", support_email: "", student_domain_check: false,
+      allowed_domains: "", maintenance_mode: false, notify_new_mentor: true, notify_new_booking: true
+    });
+    setLoading(false);
+  }
+  function set(k, v) { setSettings(s => ({ ...s, [k]: v })); }
+  async function save() {
+    setSaving(true);
+    const { error } = await sb.from("app_settings").upsert({ ...settings }).select();
+    setSaving(false);
+    if (error) { notify(error.message, "error"); return; }
+    notify("Settings saved.", "ok");
+  }
+  if (loading || !settings) return h("div", { style: { color: "var(--muted)" } }, "Loading…");
+  return h("div", null,
+    h("div", { style: { marginBottom: 20 } },
+      h("div", { style: { fontSize: 22, fontWeight: 800 } }, "Settings"),
+      h("div", { style: { fontSize: 13, color: "var(--muted)" } }, "Platform-wide configuration.")
+    ),
+    h("div", { className: "card", style: { padding: 24, maxWidth: 560, display: "flex", flexDirection: "column", gap: 16 } },
+      h("div", null,
+        h("label", { style: { fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6 } }, "Platform name"),
+        h("input", { value: settings.platform_name || "", onChange: e => set("platform_name", e.target.value) })
+      ),
+      h("div", null,
+        h("label", { style: { fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6 } }, "Support email"),
+        h("input", { value: settings.support_email || "", onChange: e => set("support_email", e.target.value) })
+      ),
+      h("div", { style: { borderTop: "1px solid var(--lavender)", paddingTop: 16 } },
+        h("label", { style: { display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 600, marginBottom: 6 } },
+          h("input", { type: "checkbox", style: { width: 16 }, checked: !!settings.student_domain_check, onChange: e => set("student_domain_check", e.target.checked) }),
+          "Require student email domain check"
+        ),
+        h("div", { style: { fontSize: 12, color: "var(--muted)", marginBottom: 8 } }, "When on, student signups are auto-rejected unless their email matches an allowed domain below."),
+        h("input", { placeholder: "e.g. iimcal.ac.in, xlri.ac.in", value: settings.allowed_domains || "", onChange: e => set("allowed_domains", e.target.value), disabled: !settings.student_domain_check })
+      ),
+      h("div", { style: { borderTop: "1px solid var(--lavender)", paddingTop: 16 } },
+        h("label", { style: { display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 600 } },
+          h("input", { type: "checkbox", style: { width: 16 }, checked: !!settings.notify_new_mentor, onChange: e => set("notify_new_mentor", e.target.checked) }),
+          "Notify admins on new mentor signup"
+        )
+      ),
+      h("div", null,
+        h("label", { style: { display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 600 } },
+          h("input", { type: "checkbox", style: { width: 16 }, checked: !!settings.notify_new_booking, onChange: e => set("notify_new_booking", e.target.checked) }),
+          "Notify admins on new booking requests"
+        )
+      ),
+      h("div", { style: { borderTop: "1px solid var(--lavender)", paddingTop: 16 } },
+        h("label", { style: { display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 600, color: "var(--danger)" } },
+          h("input", { type: "checkbox", style: { width: 16 }, checked: !!settings.maintenance_mode, onChange: e => set("maintenance_mode", e.target.checked) }),
+          "Maintenance mode (blocks student/mentor access)"
+        )
+      ),
+      h("button", { className: "btn btn-primary", style: { alignSelf: "flex-start" }, onClick: save, disabled: saving }, saving ? "Saving…" : "Save settings")
+    )
+  );
+}
+
+// ============================================================
+// ANALYTICS — read-only aggregates + Gemini AI summaries
+// ============================================================
+function Bar({ label, value, max }) {
+  const pct = max > 0 ? Math.round((value / max) * 100) : 0;
+  return h("div", { style: { marginBottom: 10 } },
+    h("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 } },
+      h("span", null, label), h("span", { style: { fontWeight: 700 } }, value)
+    ),
+    h("div", { style: { background: "var(--lavender-soft)", borderRadius: 8, height: 8, overflow: "hidden" } },
+      h("div", { style: { width: pct + "%", height: "100%", background: "var(--purple)" } })
+    )
+  );
+}
+function AnalyticsPage({ notify }) {
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [aiLoading, setAiLoading] = useState(null);
+  const [aiResult, setAiResult] = useState(null);
+  useEffect(() => { load(); }, []);
+  async function load() {
+    setLoading(true);
+    try {
+      const [students, mentors, bookingsDone, bookings] = await Promise.all([
+        sb.from("students").select("id", { count: "exact", head: true }),
+        sb.from("mentors").select("id, name").eq("status", "approved"),
+        sb.from("bookings").select("id", { count: "exact", head: true }).eq("status", "completed"),
+        sb.from("bookings").select("mentor_id")
+      ]);
+      const counts = {};
+      (bookings.data || []).forEach(b => { counts[b.mentor_id] = (counts[b.mentor_id] || 0) + 1; });
+      const topMentors = (mentors.data || []).map(m => ({ name: m.name, count: counts[m.id] || 0 }))
+        .sort((a, b) => b.count - a.count).slice(0, 5);
+      setStats({
+        students: students.count ?? 0,
+        approvedMentors: (mentors.data || []).length,
+        completedBookings: bookingsDone.count ?? 0,
+        topMentors
+      });
+    } catch (err) {
+      notify("Couldn't load analytics: " + err.message, "error");
+    }
+    setLoading(false);
+  }
+  async function runAi(type, label) {
+    setAiLoading(type);
+    setAiResult(null);
+    try {
+      const { data, error } = await sb.functions.invoke("gemini-proxy", { body: { type } });
+      if (error) throw error;
+      setAiResult({ label, text: data?.summary || data?.text || JSON.stringify(data) });
+    } catch (err) {
+      setAiResult({ label, text: null, error: "AI summaries aren't connected yet (gemini-proxy isn't deployed). " + (err.message || "") });
+    }
+    setAiLoading(null);
+  }
+  const maxMentor = stats ? Math.max(1, ...stats.topMentors.map(m => m.count)) : 1;
+  return h("div", null,
+    h("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 } },
+      h("div", null,
+        h("div", { style: { fontSize: 22, fontWeight: 800 } }, "Analytics"),
+        h("div", { style: { fontSize: 13, color: "var(--muted)" } }, "Read-only aggregates from live data.")
+      ),
+      h("button", { className: "btn btn-ghost", onClick: load }, "Refresh")
+    ),
+    loading || !stats ? h("div", { style: { color: "var(--muted)" } }, "Loading…") :
+      h(React.Fragment, null,
+        h("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px,1fr))", gap: 16, marginBottom: 24 } },
+          h("div", { className: "card", style: { padding: 20, borderTop: "3px solid var(--purple)" } },
+            h("div", { style: { fontSize: 30, fontWeight: 800 } }, stats.students),
+            h("div", { style: { fontSize: 13, color: "var(--muted)" } }, "Total students")
+          ),
+          h("div", { className: "card", style: { padding: 20, borderTop: "3px solid var(--ok)" } },
+            h("div", { style: { fontSize: 30, fontWeight: 800 } }, stats.approvedMentors),
+            h("div", { style: { fontSize: 13, color: "var(--muted)" } }, "Approved mentors")
+          ),
+          h("div", { className: "card", style: { padding: 20, borderTop: "3px solid var(--gold)" } },
+            h("div", { style: { fontSize: 30, fontWeight: 800 } }, stats.completedBookings),
+            h("div", { style: { fontSize: 13, color: "var(--muted)" } }, "Completed bookings")
+          )
+        ),
+        h("div", { className: "card", style: { padding: 20, marginBottom: 24 } },
+          h("div", { style: { fontWeight: 700, marginBottom: 14 } }, "Top mentors by bookings"),
+          stats.topMentors.length === 0 ? h("div", { style: { fontSize: 13, color: "var(--muted)" } }, "No bookings yet.") :
+            stats.topMentors.map(m => h(Bar, { key: m.name, label: m.name, value: m.count, max: maxMentor }))
+        ),
+        h("div", { className: "card", style: { padding: 20 } },
+          h("div", { style: { fontWeight: 700, marginBottom: 6 } }, "AI summaries"),
+          h("div", { style: { fontSize: 12, color: "var(--muted)", marginBottom: 14 } }, "Powered by the gemini-proxy Edge Function."),
+          h("div", { style: { display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 14 } },
+            h("button", { className: "btn btn-ghost", disabled: aiLoading, onClick: () => runAi("weekly_summary", "Weekly community summary") }, aiLoading === "weekly_summary" ? "Generating…" : "Weekly community summary"),
+            h("button", { className: "btn btn-ghost", disabled: aiLoading, onClick: () => runAi("reported_content_summary", "Reported content summary") }, aiLoading === "reported_content_summary" ? "Generating…" : "Reported content summary"),
+            h("button", { className: "btn btn-ghost", disabled: aiLoading, onClick: () => runAi("mentor_engagement_summary", "Mentor engagement summary") }, aiLoading === "mentor_engagement_summary" ? "Generating…" : "Mentor engagement summary")
+          ),
+          aiResult && h("div", { style: { background: "var(--lavender-soft)", borderRadius: 10, padding: 14, fontSize: 13 } },
+            h("div", { style: { fontWeight: 700, marginBottom: 6 } }, aiResult.label),
+            aiResult.error ? h("div", { style: { color: "var(--danger)" } }, aiResult.error) : h("div", null, aiResult.text)
+          )
+        )
+      )
+  );
 }
 
 // ============================================================
