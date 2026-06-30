@@ -1,1 +1,15 @@
-Creatung Admin Users:
+Creating Admin Users:
+Step 1 — Create the auth user
+
+Go to your Supabase project → Authentication → Users → Add user (top right).
+Choose Create new user.
+Enter the admin's email and a password (you can let Supabase auto-generate one, or set your own — either way, use this to log into admin.html afterward).
+Leave "Auto Confirm User" checked so it doesn't need an email confirmation step.
+Click Create user.
+Click into the user you just created and copy their UUID (shown at the top of their user detail page).
+
+Step 2 — Insert their admin row
+Go to SQL Editor and run, with the UUID/name/email filled in:
+sqlinsert into admins (id, name, email)
+values ('PASTE-THE-UUID-HERE', 'Your Name', 'admin@campus2board.com');
+Use the same email you used when creating the auth user in Step 1 — the app looks up the admins row by id (the UUID), but it's good practice to keep email in sync for your own reference.
