@@ -2193,33 +2193,23 @@ function App() {
       onDone: () => setToast(null)
     }));
   }
-  return /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex"
-    }
-  }, /*#__PURE__*/React.createElement(Sidebar, {
-    active: nav,
-    onNavigate: setNav,
-    admin: admin,
-    onLogout: handleLogout
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1,
-      padding: 32,
-      minHeight: "100vh"
-    }
-  }, nav === "dashboard" && /*#__PURE__*/React.createElement(Dashboard, {
-    notify: notify
-  }), nav === "users" && /*#__PURE__*/React.createElement(UsersPage, {
-    notify: notify
-  }), nav === "mentors" && /*#__PURE__*/React.createElement(MentorsPage, {
-    notify: notify
-  }), nav === "communities" && /*#__PURE__*/React.createElement(CommunitiesPage, {
-    notify: notify
-  })), toast && /*#__PURE__*/React.createElement(Toast, {
-    ...toast,
-    onDone: () => setToast(null)
-  }));
+  return h("div", { style: { display: "flex" } },
+    h(Sidebar, { active: nav, onNavigate: setNav, admin: admin, onLogout: handleLogout }),
+    h("div", { style: { flex: 1, padding: 32, minHeight: "100vh", overflowY: "auto" } },
+      nav === "dashboard"     && h(Dashboard,         { notify }),
+      nav === "users"         && h(UsersPage,          { notify }),
+      nav === "mentors"       && h(MentorsPage,        { notify }),
+      nav === "communities"   && h(CommunitiesPage,    { notify }),
+      nav === "sessions"      && h(SessionsPage,       { notify }),
+      nav === "courses"       && h(CoursesPage,        { notify }),
+      nav === "resources"     && h(ResourcesPage,      { notify }),
+      nav === "discussions"   && h(DiscussionsPage,    { notify }),
+      nav === "announcements" && h(AnnouncementsPage,  { notify }),
+      nav === "analytics"     && h(AnalyticsPage,      { notify }),
+      nav === "settings"      && h(SettingsPage,       { notify })
+    ),
+    toast && h(Toast, { ...toast, onDone: () => setToast(null) })
+  );
 }
 ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(App, null));</script>
 </body>
