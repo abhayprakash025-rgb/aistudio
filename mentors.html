@@ -182,44 +182,161 @@ function Sidebar({ active, onNavigate, mentor, onLogout }) {
 }
 
 // ─── AUTH: SIGNUP / LOGIN ─────────────────────────────────────
+const INDUSTRY_OPTIONS = [
+  "BFSI — Banking, Financial Services & Insurance",
+  "Investment Banking & Capital Markets",
+  "Private Equity & Venture Capital",
+  "Asset Management & Wealth Management",
+  "Consulting — Strategy & Management",
+  "Consulting — Technology & IT",
+  "Consulting — Operations & Supply Chain",
+  "Technology — Product & Engineering",
+  "Technology — SaaS / Cloud",
+  "FMCG & Consumer Goods",
+  "Retail & E-commerce",
+  "Healthcare & Pharmaceuticals",
+  "Media, Entertainment & Sports",
+  "Real Estate & Infrastructure",
+  "Energy & Utilities",
+  "Manufacturing & Industrial",
+  "Logistics & Supply Chain",
+  "Legal & Compliance",
+  "Education & EdTech",
+  "Non-profit & Development Sector",
+  "Government & Public Policy",
+  "Other",
+];
+
+const EXPERTISE_OPTIONS = [
+  "Finance","Investment Banking","Private Equity","Asset Management",
+  "Strategy Consulting","Operations","Marketing","Sales",
+  "Technology","Product Management","Data & Analytics",
+  "HR & People","Legal","General Management","Entrepreneurship"
+];
+
+const COMMUNITY_OPTIONS = ["Finance","Marketing","Consulting","Technology","Operations"];
+
+function ChipSelect({ options, selected, onToggle }) {
+  return h("div", { style:{ display:"flex", flexWrap:"wrap", gap:8 } },
+    options.map(o => h("div", {
+      key:o, onClick:() => onToggle(o),
+      style:{
+        padding:"6px 14px", borderRadius:999, fontSize:13, cursor:"pointer", fontWeight:600,
+        background: selected.includes(o) ? "var(--purple)" : "var(--lavender-soft)",
+        color: selected.includes(o) ? "#fff" : "var(--ink)",
+        border: "1.5px solid " + (selected.includes(o) ? "var(--purple)" : "var(--lavender)")
+      }
+    }, o))
+  );
+}
+
 function AuthPage({ onAuthed, notify }) {
-  const [mode, setMode]       = useState("login"); // login | signup | forgot
-  const [step, setStep]       = useState(1);       // signup is 2 steps
+  const [mode, setMode]       = useState("login"); // login | signup | forgot | success
+  const [step, setStep]       = useState(1);
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors]   = useState({});
+  const [submittedName, setSubmittedName] = useState("");
   const [form, setForm]       = useState({
-    email:"", password:"", name:"", photo_url:"",
+    email:"", password:"", confirmPassword:"", name:"",
     company:"", designation:"", years_experience:"",
     linkedin_url:"", bio:"",
     expertise:[], skills:"", industry:"", communities:[], languages:""
   });
 
-  function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
+  function set(k, v) {
+    setForm(f => ({ ...f, [k]: v }));
+    setErrors(e => ({ ...e, [k]: null })); // clear error on edit
+  }
+  function toggleArr(k, v) {
+    set(k, form[k].includes(v) ? form[k].filter(x=>x!==v) : [...form[k], v]);
+  }
 
+  // ── Step 1 validation ────────────────────────────────────────
+  function validateStep1() {
+    const e = {};
+    if (!form.name.trim())          e.name = "Full name is required.";
+    if (!form.email.trim())         e.email = "Email is required.";
+    if (!/\S+@\S+\.\S+/.test(form.email)) e.email = "Enter a valid email address.";
+    if (form.password.length < 8)   e.password = "Password must be at least 8 characters.";
+    if (form.password !== form.confirmPassword) e.confirmPassword = "Passwords do not match.";
+    if (!form.company.trim())       e.company = "Company is required.";
+    if (!form.designation.trim())   e.designation = "Designation is required.";
+    if (!form.years_experience)     e.years_experience = "Years of experience is required.";
+    if (!form.industry)             e.industry = "Please select an industry.";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  }
+
+  // ── Step 2 validation ────────────────────────────────────────
+  function validateStep2() {
+    const e = {};
+    if (!form.bio.trim())                   e.bio = "Bio is required.";
+    if (form.expertise.length === 0)        e.expertise = "Select at least one expertise area.";
+    if (!form.skills.trim())                e.skills = "Please list at least one skill.";
+    if (form.communities.length === 0)      e.communities = "Select at least one community.";
+    if (!form.languages.trim())             e.languages = "Please list at least one language.";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  }
+
+  // ── Signup handler ───────────────────────────────────────────
   async function handleSignup() {
+    if (!validateStep2()) return;
     setLoading(true);
-    const { data: authData, error: authError } = await sb.auth.signUp({ email: form.email, password: form.password });
-    if (authError) { notify(authError.message, "error"); setLoading(false); return; }
-    const user = authData.user;
-    const { error: rowError } = await sb.from("mentors").insert({
-      id: user.id, email: form.email, name: form.name,
-      photo_url: form.photo_url || null, company: form.company,
-      designation: form.designation,
-      years_experience: parseInt(form.years_experience) || 0,
-      linkedin_url: form.linkedin_url || null, bio: form.bio || null,
-      expertise: form.expertise.join(","), skills: form.skills,
-      industry: form.industry, languages: form.languages,
-      status: "pending"
+
+    // 1. Create auth user
+    const { data: authData, error: authError } = await sb.auth.signUp({
+      email: form.email.trim(),
+      password: form.password,
+      options: { data: { name: form.name.trim(), role: "mentor" } }
     });
+    if (authError) { notify(authError.message, "error"); setLoading(false); return; }
+
+    const user = authData?.user;
+    if (!user) { notify("Signup failed — please try again.", "error"); setLoading(false); return; }
+
+    // 2. Insert into mentors table
+    const { error: rowError } = await sb.from("mentors").insert({
+      id:               user.id,
+      email:            form.email.trim(),
+      name:             form.name.trim(),
+      company:          form.company.trim(),
+      designation:      form.designation.trim(),
+      years_experience: parseInt(form.years_experience) || 0,
+      industry:         form.industry,
+      linkedin_url:     form.linkedin_url.trim() || null,
+      bio:              form.bio.trim(),
+      expertise:        form.expertise.join(", "),
+      skills:           form.skills.trim(),
+      communities:      form.communities.join(", "),
+      languages:        form.languages.trim(),
+      status:           "pending",
+      created_at:       new Date().toISOString(),
+    });
+
     setLoading(false);
-    if (rowError) { notify("Profile save failed: " + rowError.message, "error"); return; }
-    notify("Application submitted! You'll hear from us once reviewed.", "ok");
-    setMode("login");
+
+    if (rowError) {
+      // Auth user was created but profile insert failed — sign them out cleanly
+      await sb.auth.signOut();
+      notify("Profile save failed: " + rowError.message, "error");
+      return;
+    }
+
+    // 3. Sign out immediately so they go through the login gate
+    await sb.auth.signOut();
+    setSubmittedName(form.name.trim());
+    setMode("success");
   }
 
   async function handleLogin(e) {
     e.preventDefault();
+    const le = {};
+    if (!form.email.trim()) le.email = "Email is required.";
+    if (!form.password)     le.password = "Password is required.";
+    if (Object.keys(le).length) { setErrors(le); return; }
     setLoading(true);
-    const { error } = await sb.auth.signInWithPassword({ email: form.email, password: form.password });
+    const { error } = await sb.auth.signInWithPassword({ email: form.email.trim(), password: form.password });
     setLoading(false);
     if (error) { notify(error.message, "error"); return; }
     onAuthed();
@@ -227,102 +344,198 @@ function AuthPage({ onAuthed, notify }) {
 
   async function handleForgot(e) {
     e.preventDefault();
+    if (!form.email.trim()) { setErrors({ email:"Email is required." }); return; }
     setLoading(true);
-    const { error } = await sb.auth.resetPasswordForEmail(form.email, { redirectTo: window.location.origin + "/mentors" });
+    const { error } = await sb.auth.resetPasswordForEmail(form.email.trim(), {
+      redirectTo: window.location.origin + "/mentors"
+    });
     setLoading(false);
     if (error) { notify(error.message, "error"); return; }
     notify("Reset link sent — check your email.", "ok");
     setMode("login");
   }
 
-  const EXPERTISE_OPTIONS = ["Finance","Marketing","Consulting","Operations","Technology","Product","HR","Legal"];
-  const COMMUNITY_OPTIONS = ["Finance","Marketing","Consulting","Technology","Operations"];
-
-  function toggleArr(k, v) {
-    set(k, form[k].includes(v) ? form[k].filter(x=>x!==v) : [...form[k], v]);
+  // ── Error label helper ───────────────────────────────────────
+  function Err({ k }) {
+    return errors[k] ? h("div", { style:{ color:"var(--danger)", fontSize:12, marginTop:3 } }, errors[k]) : null;
   }
 
-  function ChipSelect({ options, selected, onToggle }) {
-    return h("div", { style:{ display:"flex", flexWrap:"wrap", gap:8 } },
-      options.map(o => h("div", {
-        key:o, onClick:() => onToggle(o),
-        style:{
-          padding:"6px 14px", borderRadius:999, fontSize:13, cursor:"pointer", fontWeight:600,
-          background: selected.includes(o) ? "var(--purple)" : "var(--lavender-soft)",
-          color: selected.includes(o) ? "#fff" : "var(--ink)",
-          border: "1.5px solid " + (selected.includes(o) ? "var(--purple)" : "var(--lavender)")
-        }
-      }, o))
-    );
-  }
-
+  // ── Screens ──────────────────────────────────────────────────
   const loginForm = () => h("form", { onSubmit: handleLogin },
-    h(Field, { label:"Email" }, h("input", { type:"email", required:true, value:form.email, onChange:e=>set("email",e.target.value), placeholder:"you@university.ac.in" })),
-    h(Field, { label:"Password" }, h("input", { type:"password", required:true, value:form.password, onChange:e=>set("password",e.target.value), placeholder:"••••••••" })),
-    h("div", { style:{ textAlign:"right", marginBottom:18 } },
-      h("span", { onClick:()=>setMode("forgot"), style:{ fontSize:13, color:"var(--purple)", cursor:"pointer" } }, "Forgot password?")
+    h(Field, { label:"Email" },
+      h("input", { type:"email", value:form.email, onChange:e=>set("email",e.target.value), placeholder:"you@company.com",
+        style:{ borderColor: errors.email ? "var(--danger)" : "" } }),
+      h(Err, { k:"email" })
     ),
-    h("button", { className:"btn btn-primary", type:"submit", style:{ width:"100%" }, disabled:loading }, loading ? "Signing in…" : "Sign in"),
+    h(Field, { label:"Password" },
+      h("input", { type:"password", value:form.password, onChange:e=>set("password",e.target.value), placeholder:"••••••••",
+        style:{ borderColor: errors.password ? "var(--danger)" : "" } }),
+      h(Err, { k:"password" })
+    ),
+    h("div", { style:{ textAlign:"right", marginBottom:18 } },
+      h("span", { onClick:()=>{ setErrors({}); setMode("forgot"); }, style:{ fontSize:13, color:"var(--purple)", cursor:"pointer" } }, "Forgot password?")
+    ),
+    h("button", { className:"btn btn-primary", type:"submit", style:{ width:"100%" }, disabled:loading },
+      loading ? "Signing in…" : "Sign in"
+    ),
     h("div", { style:{ textAlign:"center", marginTop:16, fontSize:13 } },
-      "New mentor? ", h("span", { onClick:()=>{ setMode("signup"); setStep(1); }, style:{ color:"var(--purple)", cursor:"pointer", fontWeight:600 } }, "Apply here")
+      "New mentor? ", h("span", { onClick:()=>{ setErrors({}); setMode("signup"); setStep(1); }, style:{ color:"var(--purple)", cursor:"pointer", fontWeight:600 } }, "Apply here")
     )
   );
 
   const signupStep1 = () => h("div", null,
-    h(Field, { label:"Full name" }, h("input", { required:true, value:form.name, onChange:e=>set("name",e.target.value), placeholder:"Priya Sharma" })),
-    h(Field, { label:"Work email" }, h("input", { type:"email", required:true, value:form.email, onChange:e=>set("email",e.target.value), placeholder:"priya@company.com" })),
-    h(Field, { label:"Password" }, h("input", { type:"password", required:true, value:form.password, onChange:e=>set("password",e.target.value), placeholder:"Min 8 characters" })),
-    h(Field, { label:"Current company" }, h("input", { required:true, value:form.company, onChange:e=>set("company",e.target.value), placeholder:"McKinsey & Company" })),
-    h(Field, { label:"Designation" }, h("input", { required:true, value:form.designation, onChange:e=>set("designation",e.target.value), placeholder:"Associate" })),
+    h(Field, { label:"Full name *" },
+      h("input", { value:form.name, onChange:e=>set("name",e.target.value), placeholder:"Priya Sharma",
+        style:{ borderColor: errors.name?"var(--danger)":"" } }),
+      h(Err, { k:"name" })
+    ),
+    h(Field, { label:"Work email *" },
+      h("input", { type:"email", value:form.email, onChange:e=>set("email",e.target.value), placeholder:"priya@company.com",
+        style:{ borderColor: errors.email?"var(--danger)":"" } }),
+      h(Err, { k:"email" })
+    ),
+    h(Field, { label:"Password * (min 8 characters)" },
+      h("input", { type:"password", value:form.password, onChange:e=>set("password",e.target.value), placeholder:"Min 8 characters",
+        style:{ borderColor: errors.password?"var(--danger)":"" } }),
+      h(Err, { k:"password" })
+    ),
+    h(Field, { label:"Confirm password *" },
+      h("input", { type:"password", value:form.confirmPassword, onChange:e=>set("confirmPassword",e.target.value), placeholder:"Repeat password",
+        style:{ borderColor: errors.confirmPassword?"var(--danger)":"" } }),
+      h(Err, { k:"confirmPassword" })
+    ),
+    h(Field, { label:"Current company *" },
+      h("input", { value:form.company, onChange:e=>set("company",e.target.value), placeholder:"McKinsey & Company",
+        style:{ borderColor: errors.company?"var(--danger)":"" } }),
+      h(Err, { k:"company" })
+    ),
+    h(Field, { label:"Designation *" },
+      h("input", { value:form.designation, onChange:e=>set("designation",e.target.value), placeholder:"Associate",
+        style:{ borderColor: errors.designation?"var(--danger)":"" } }),
+      h(Err, { k:"designation" })
+    ),
     h("div", { style:{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 } },
-      h(Field, { label:"Years of experience" }, h("input", { type:"number", min:0, max:50, value:form.years_experience, onChange:e=>set("years_experience",e.target.value), placeholder:"3" })),
-      h(Field, { label:"Industry" }, h("select", { value:form.industry, onChange:e=>set("industry",e.target.value) },
-        h("option", { value:"" }, "Select…"),
-        ["Finance","Consulting","Technology","FMCG","Healthcare","Legal","Other"].map(o => h("option", { key:o, value:o }, o))
-      ))
+      h(Field, { label:"Years of experience *" },
+        h("input", { type:"number", min:0, max:50, value:form.years_experience, onChange:e=>set("years_experience",e.target.value), placeholder:"3",
+          style:{ borderColor: errors.years_experience?"var(--danger)":"" } }),
+        h(Err, { k:"years_experience" })
+      ),
+      h(Field, { label:"Industry *" },
+        h("select", { value:form.industry, onChange:e=>set("industry",e.target.value),
+          style:{ borderColor: errors.industry?"var(--danger)":"" } },
+          h("option", { value:"" }, "Select industry…"),
+          INDUSTRY_OPTIONS.map(o => h("option", { key:o, value:o }, o))
+        ),
+        h(Err, { k:"industry" })
+      )
     ),
     h("div", { style:{ display:"flex", justifyContent:"flex-end", marginTop:8 } },
-      h("button", { className:"btn btn-primary", onClick:()=> {
-        if (!form.name||!form.email||!form.password||!form.company||!form.designation) { alert("Fill all required fields."); return; }
-        setStep(2);
-      } }, "Next →")
+      h("button", { className:"btn btn-primary", onClick:()=>{ if(validateStep1()) setStep(2); } }, "Next →")
     )
   );
 
   const signupStep2 = () => h("div", null,
-    h(Field, { label:"LinkedIn profile URL" }, h("input", { value:form.linkedin_url, onChange:e=>set("linkedin_url",e.target.value), placeholder:"https://linkedin.com/in/priyasharma" })),
-    h(Field, { label:"Short bio", hint:"2–3 sentences about your career and what you help students with." }, h("textarea", { rows:3, value:form.bio, onChange:e=>set("bio",e.target.value), placeholder:"I'm a finance professional with 5 years at…" })),
-    h(Field, { label:"Expertise areas" }, h(ChipSelect, { options:EXPERTISE_OPTIONS, selected:form.expertise, onToggle:v=>toggleArr("expertise",v) })),
-    h(Field, { label:"Key skills", hint:"Comma-separated" }, h("input", { value:form.skills, onChange:e=>set("skills",e.target.value), placeholder:"Financial modelling, DCF, Excel, PowerPoint" })),
-    h(Field, { label:"Communities you'll contribute to" }, h(ChipSelect, { options:COMMUNITY_OPTIONS, selected:form.communities, onToggle:v=>toggleArr("communities",v) })),
-    h(Field, { label:"Languages spoken", hint:"Comma-separated" }, h("input", { value:form.languages, onChange:e=>set("languages",e.target.value), placeholder:"English, Hindi" })),
+    h(Field, { label:"LinkedIn profile URL" },
+      h("input", { value:form.linkedin_url, onChange:e=>set("linkedin_url",e.target.value), placeholder:"https://linkedin.com/in/priyasharma" })
+    ),
+    h(Field, { label:"Short bio *", hint:"2–3 sentences about your career and what you help students with." },
+      h("textarea", { rows:3, value:form.bio, onChange:e=>set("bio",e.target.value),
+        placeholder:"I'm a finance professional with 5 years at…",
+        style:{ borderColor: errors.bio?"var(--danger)":"" } }),
+      h(Err, { k:"bio" })
+    ),
+    h(Field, { label:"Expertise areas * (pick at least one)" },
+      h(ChipSelect, { options:EXPERTISE_OPTIONS, selected:form.expertise, onToggle:v=>toggleArr("expertise",v) }),
+      h(Err, { k:"expertise" })
+    ),
+    h(Field, { label:"Key skills * (comma-separated)", hint:"e.g. Financial modelling, DCF, Excel" },
+      h("input", { value:form.skills, onChange:e=>set("skills",e.target.value), placeholder:"Financial modelling, DCF, Excel, PowerPoint",
+        style:{ borderColor: errors.skills?"var(--danger)":"" } }),
+      h(Err, { k:"skills" })
+    ),
+    h(Field, { label:"Communities you'll contribute to * (pick at least one)" },
+      h(ChipSelect, { options:COMMUNITY_OPTIONS, selected:form.communities, onToggle:v=>toggleArr("communities",v) }),
+      h(Err, { k:"communities" })
+    ),
+    h(Field, { label:"Languages spoken * (comma-separated)" },
+      h("input", { value:form.languages, onChange:e=>set("languages",e.target.value), placeholder:"English, Hindi",
+        style:{ borderColor: errors.languages?"var(--danger)":"" } }),
+      h(Err, { k:"languages" })
+    ),
     h("div", { style:{ display:"flex", gap:10, marginTop:8, justifyContent:"flex-end" } },
-      h("button", { className:"btn btn-ghost", onClick:()=>setStep(1) }, "← Back"),
-      h("button", { className:"btn btn-primary", onClick:handleSignup, disabled:loading }, loading ? "Submitting…" : "Submit application")
+      h("button", { className:"btn btn-ghost", onClick:()=>{ setErrors({}); setStep(1); } }, "← Back"),
+      h("button", { className:"btn btn-primary", onClick:handleSignup, disabled:loading },
+        loading ? "Submitting…" : "Submit application"
+      )
     )
   );
 
   const forgotForm = () => h("form", { onSubmit:handleForgot },
-    h("div", { style:{ fontSize:14, color:"var(--muted)", marginBottom:16 } }, "Enter your email and we'll send a reset link."),
-    h(Field, { label:"Email" }, h("input", { type:"email", required:true, value:form.email, onChange:e=>set("email",e.target.value) })),
-    h("button", { className:"btn btn-primary", type:"submit", style:{ width:"100%" }, disabled:loading }, loading ? "Sending…" : "Send reset link"),
+    h("div", { style:{ fontSize:14, color:"var(--muted)", marginBottom:16 } }, "Enter your registered email and we'll send a reset link."),
+    h(Field, { label:"Email" },
+      h("input", { type:"email", value:form.email, onChange:e=>set("email",e.target.value),
+        style:{ borderColor: errors.email?"var(--danger)":"" } }),
+      h(Err, { k:"email" })
+    ),
+    h("button", { className:"btn btn-primary", type:"submit", style:{ width:"100%" }, disabled:loading },
+      loading ? "Sending…" : "Send reset link"
+    ),
     h("div", { style:{ textAlign:"center", marginTop:12, fontSize:13 } },
-      h("span", { onClick:()=>setMode("login"), style:{ color:"var(--purple)", cursor:"pointer" } }, "← Back to sign in")
+      h("span", { onClick:()=>{ setErrors({}); setMode("login"); }, style:{ color:"var(--purple)", cursor:"pointer" } }, "← Back to sign in")
     )
   );
 
-  const titles = { login:"Welcome back", signup: step===1 ? "Create your mentor profile" : "Tell us more", forgot:"Reset password" };
+  // ── Success screen ───────────────────────────────────────────
+  if (mode === "success") {
+    return h("div", { style:{
+      minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center",
+      background:"linear-gradient(135deg, var(--purple-deep) 0%, var(--purple) 100%)", padding:20
+    } },
+      h("div", { className:"card", style:{ width:"100%", maxWidth:480, padding:44, textAlign:"center" } },
+        h("div", { style:{ fontSize:56, marginBottom:16 } }, "🎉"),
+        h("div", { style:{ fontSize:22, fontWeight:800, marginBottom:10 } }, "Application submitted!"),
+        h("div", { style:{ fontSize:14, color:"var(--muted)", lineHeight:1.8, marginBottom:8 } },
+          "Thanks, ", h("strong", null, submittedName), ". Your mentor profile is now under review."
+        ),
+        h("div", { style:{ fontSize:14, color:"var(--muted)", lineHeight:1.8, marginBottom:28 } },
+          "Our team will verify your details and get back to you within ", h("strong", null, "2–3 business days"), ". You'll receive an email confirmation once approved."
+        ),
+        h("div", { style:{
+          background:"var(--lavender-soft)", borderRadius:12, padding:"14px 18px",
+          fontSize:13, color:"var(--ink)", marginBottom:28, textAlign:"left"
+        } },
+          h("div", { style:{ fontWeight:700, marginBottom:6 } }, "What happens next?"),
+          h("div", { style:{ display:"flex", flexDirection:"column", gap:6 } },
+            ["Admin reviews your profile and credentials.",
+             "You receive an approval email.",
+             "Log in and set your availability.",
+             "Students can start booking sessions with you."
+            ].map((s,i) => h("div", { key:i, style:{ display:"flex", gap:10, alignItems:"flex-start" } },
+              h("span", { style:{ fontWeight:800, color:"var(--purple)", flexShrink:0 } }, (i+1)+"."),
+              h("span", null, s)
+            ))
+          )
+        ),
+        h("button", { className:"btn btn-primary", style:{ width:"100%" }, onClick:()=>{ setErrors({}); setStep(1); setMode("login"); } },
+          "Go to sign in"
+        )
+      )
+    );
+  }
+
+  const titles = { login:"Welcome back", signup: step===1 ? "Apply to become a mentor" : "A bit more about you", forgot:"Reset password" };
 
   return h("div", { style:{
     minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center",
     background:"linear-gradient(135deg, var(--purple-deep) 0%, var(--purple) 100%)", padding:20
   } },
-    h("div", { className:"card", style:{ width:"100%", maxWidth:500, padding:36 } },
+    h("div", { className:"card", style:{ width:"100%", maxWidth:520, padding:36, maxHeight:"92vh", overflowY:"auto" } },
       h("div", { style:{ textAlign:"center", marginBottom:24 } },
-        h("div", { style:{ fontSize:22, fontWeight:800, marginBottom:4 } }, titles[mode]),
-        mode === "signup" && h("div", { style:{ display:"flex", gap:8, justifyContent:"center", marginTop:8 } },
+        h("div", { style:{ fontSize:20, fontWeight:800, color:"var(--purple)", marginBottom:4 } }, "Campus2Board"),
+        h("div", { style:{ fontSize:18, fontWeight:700, marginBottom:4 } }, titles[mode]),
+        mode === "signup" && h("div", { style:{ display:"flex", gap:8, justifyContent:"center", marginTop:10 } },
           [1,2].map(s => h("div", { key:s, style:{
-            width:28, height:6, borderRadius:999, background: step >= s ? "var(--purple)" : "var(--lavender)"
+            width:32, height:5, borderRadius:999, background: step >= s ? "var(--purple)" : "var(--lavender)"
           } }))
         )
       ),
@@ -499,7 +712,7 @@ function ProfilePage({ mentor, onMentorUpdate, notify }) {
         h(Field, { label:"Years of experience *" }, h("input", { type:"number", value:form.years_experience||"", onChange:e=>set("years_experience",e.target.value) })),
         h(Field, { label:"Industry *" }, h("select", { value:form.industry||"", onChange:e=>set("industry",e.target.value) },
           h("option",{value:""},"Select…"),
-          ["Finance","Consulting","Technology","FMCG","Healthcare","Legal","Other"].map(o=>h("option",{key:o,value:o},o))
+          INDUSTRY_OPTIONS.map(o=>h("option",{key:o,value:o},o))
         ))
       ),
       h(Field, { label:"LinkedIn URL" }, h("input", { value:form.linkedin_url||"", onChange:e=>set("linkedin_url",e.target.value) })),
