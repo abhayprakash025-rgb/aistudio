@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Campus2Board — Mentor Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<style>
+  :root{
+    --purple:#4B0082;--purple-deep:#34005B;--gold:#F59E0B;
+    --lavender:#E9D8FD;--lavender-soft:#F5EEFF;
+    --ink:#241B33;--muted:#7C6F93;--danger:#D64545;--ok:#1F9D55;
+    --sidebar:240px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Poppins',sans-serif;background:var(--lavender-soft);color:var(--ink);}
+  ::-webkit-scrollbar{width:8px;height:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--lavender);border-radius:8px;}
+  .card{background:#fff;border-radius:16px;box-shadow:0 2px 10px rgba(75,0,130,0.08);}
+  .btn{font-family:'Poppins',sans-serif;font-weight:600;border:none;border-radius:12px;
+    padding:10px 18px;cursor:pointer;font-size:14px;transition:transform .12s,box-shadow .12s;}
+  .btn:active{transform:scale(0.97);}
+  .btn-primary{background:var(--purple);color:#fff;}
+  .btn-primary:hover{background:var(--purple-deep);}
+  .btn-gold{background:var(--gold);color:#3A2400;}
+  .btn-ghost{background:transparent;color:var(--purple);border:1.5px solid var(--lavender);}
+  .btn-danger{background:#FDEAEA;color:var(--danger);}
+  .btn-ok{background:#E6F7EC;color:var(--ok);}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  input,select,textarea{font-family:'Poppins',sans-serif;border:1.5px solid var(--lavender);
+    border-radius:10px;padding:9px 12px;font-size:14px;outline:none;width:100%;}
+  input:focus,select:focus,textarea:focus{border-color:var(--purple);}
+  .pill{display:inline-block;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:600;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const { useState, useEffect, useMemo, useRef } = React;
+const h = React.createElement;
+
+// ─── CONFIG ─────────────────────────────────────────────────
+const SUPABASE_URL  = "https://yhycjpsbuiidboadvchp.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InloeWNqcHNidWlpZGJvYWR2Y2hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMjMxMTUsImV4cCI6MjA5Nzc5OTExNX0.9l639s3cddDx9nHWeAr533yJ996rM4tqSQU8iUrPUWg";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ─── SMALL UI HELPERS ────────────────────────────────────────
+function StatusPill({ status }) {
+  const map = {
+    pending:   { bg:"#FFF4DA", fg:"#92660B" },
+    approved:  { bg:"#E6F7EC", fg:"#1F9D55" },
+    rejected:  { bg:"#FDEAEA", fg:"#D64545" },
+    suspended: { bg:"#F0E8FF", fg:"#6A3FBF" },
+    draft:     { bg:"#F1ECF7", fg:"#7C6F93" },
+    published: { bg:"#E6F7EC", fg:"#1F9D55" },
+    archived:  { bg:"#F1ECF7", fg:"#7C6F93" },
+    completed: { bg:"#E6F7EC", fg:"#1F9D55" },
+    cancelled: { bg:"#FDEAEA", fg:"#D64545" },
+    upcoming:  { bg:"#FFF4DA", fg:"#92660B" },
+    live:      { bg:"#E6F7EC", fg:"#1F9D55" },
+    visible:   { bg:"#E6F7EC", fg:"#1F9D55" },
+    hidden:    { bg:"#F1ECF7", fg:"#7C6F93" },
+  };
+  const c = map[status] || { bg:"#F1ECF7", fg:"#7C6F93" };
+  return h("span", { className:"pill", style:{ background:c.bg, color:c.fg } }, status);
+}
+
+function EmptyState({ icon="◌", title, body }) {
+  return h("div", { className:"card", style:{ padding:48, textAlign:"center" } },
+    h("div", { style:{ fontSize:36, marginBottom:12, opacity:.4 } }, icon),
+    h("div", { style:{ fontSize:18, fontWeight:700, marginBottom:6 } }, title),
+    h("div", { style:{ color:"var(--muted)", fontSize:14 } }, body)
+  );
+}
+
+function Toast({ message, kind, onDone }) {
+  useEffect(() => { const t = setTimeout(onDone, 3400); return () => clearTimeout(t); }, []);
+  return h("div", { style:{
+    position:"fixed", bottom:24, right:24, zIndex:9999,
+    background: kind === "error" ? "#D64545" : "#34005B",
+    color:"#fff", padding:"12px 20px", borderRadius:12,
+    fontSize:14, fontWeight:500, boxShadow:"0 6px 20px rgba(0,0,0,.25)", maxWidth:360
+  } }, message);
+}
+
+function Modal({ title, onClose, children, width=500 }) {
+  return h("div", { style:{
+    position:"fixed", inset:0, background:"rgba(36,27,51,0.45)",
+    display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000
+  }, onClick:onClose },
+    h("div", { className:"card", style:{
+      width, maxWidth:"90vw", maxHeight:"90vh", overflowY:"auto",
+      padding:28, position:"relative"
+    }, onClick:e=>e.stopPropagation() },
+      h("div", { style:{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 } },
+        h("div", { style:{ fontWeight:800, fontSize:18 } }, title),
+        h("button", { className:"btn btn-ghost", style:{ padding:"4px 10px", fontSize:18 }, onClick:onClose }, "×")
+      ),
+      children
+    )
+  );
+}
+
+function ConfirmModal({ title, body, confirmLabel="Confirm", onConfirm, onClose, danger=true }) {
+  return h(Modal, { title, onClose, width:380 },
+    h("div", { style:{ fontSize:14, marginBottom:18 } }, body),
+    h("div", { style:{ display:"flex", gap:10, justifyContent:"flex-end" } },
+      h("button", { className:"btn btn-ghost", onClick:onClose }, "Cancel"),
+      h("button", { className:"btn " + (danger ? "btn-danger" : "btn-primary"), onClick:onConfirm }, confirmLabel)
+    )
+  );
+}
+
+function Field({ label, hint, children }) {
+  return h("div", { style:{ marginBottom:14 } },
+    h("label", { style:{ fontSize:13, fontWeight:600, display:"block", marginBottom:5 } }, label),
+    hint && h("div", { style:{ fontSize:12, color:"var(--muted)", marginBottom:4 } }, hint),
+    children
+  );
+}
+
+// ─── SIDEBAR NAV ─────────────────────────────────────────────
+const NAV = [
+  { key:"dashboard",    label:"Dashboard",      icon:"▦" },
+  { key:"profile",      label:"My Profile",     icon:"◉" },
+  { key:"availability", label:"Availability",   icon:"◷" },
+  { key:"bookings",     label:"Bookings",       icon:"◈" },
+  { key:"sessions",     label:"Live Sessions",  icon:"▶" },
+  { key:"courses",      label:"Courses",        icon:"▣" },
+  { key:"resources",    label:"Resources",      icon:"▤" },
+  { key:"discussions",  label:"Discussions",    icon:"◫" },
+  { key:"notifications",label:"Notifications",  icon:"◔" },
+  { key:"settings",     label:"Settings",       icon:"⚙" },
+];
+
+function Sidebar({ active, onNavigate, mentor, onLogout }) {
+  return h("div", { style:{
+    width:"var(--sidebar)", minHeight:"100vh", background:"var(--purple-deep)",
+    display:"flex", flexDirection:"column", position:"sticky", top:0, flexShrink:0
+  } },
+    h("div", { style:{ padding:"28px 20px 16px" } },
+      h("div", { style:{ fontSize:18, fontWeight:800, color:"#fff", marginBottom:4 } }, "Campus2Board"),
+      h("div", { style:{ fontSize:12, color:"rgba(255,255,255,.5)", fontWeight:500 } }, "Mentor Portal")
+    ),
+    h("div", { style:{ padding:"0 12px", borderBottom:"1px solid rgba(255,255,255,.1)", paddingBottom:16, marginBottom:8 } },
+      h("div", { style:{
+        background:"rgba(255,255,255,.08)", borderRadius:12, padding:"10px 12px",
+        display:"flex", alignItems:"center", gap:10
+      } },
+        h("div", { style:{
+          width:34, height:34, borderRadius:"50%", background:"var(--gold)",
+          display:"flex", alignItems:"center", justifyContent:"center",
+          fontWeight:800, color:"#3A2400", fontSize:14, flexShrink:0
+        } }, (mentor?.name || "M")[0].toUpperCase()),
+        h("div", null,
+          h("div", { style:{ color:"#fff", fontWeight:600, fontSize:13, lineHeight:1.2 } }, mentor?.name || "Mentor"),
+          h("div", { style:{ color:"rgba(255,255,255,.5)", fontSize:11 } }, mentor?.designation || "")
+        )
+      )
+    ),
+    h("div", { style:{ flex:1, padding:"0 10px", overflowY:"auto" } },
+      NAV.map(item => h("div", {
+        key:item.key, onClick:() => onNavigate(item.key),
+        style:{
+          display:"flex", alignItems:"center", gap:10, padding:"10px 12px",
+          borderRadius:10, cursor:"pointer", marginBottom:2,
+          background: active === item.key ? "rgba(255,255,255,.14)" : "transparent",
+          color: active === item.key ? "#fff" : "rgba(255,255,255,.6)",
+          fontWeight: active === item.key ? 700 : 500, fontSize:14,
+          transition:"background .15s"
+        }
+      }, h("span", { style:{ fontSize:16 } }, item.icon), item.label))
+    ),
+    h("div", { style:{ padding:"12px 16px 24px" } },
+      h("button", { className:"btn btn-ghost", style:{ width:"100%", color:"rgba(255,255,255,.6)", borderColor:"rgba(255,255,255,.15)" }, onClick:onLogout }, "Sign out")
+    )
+  );
+}
+
+// ─── AUTH: SIGNUP / LOGIN ─────────────────────────────────────
+function AuthPage({ onAuthed, notify }) {
+  const [mode, setMode]       = useState("login"); // login | signup | forgot
+  const [step, setStep]       = useState(1);       // signup is 2 steps
+  const [loading, setLoading] = useState(false);
+  const [form, setForm]       = useState({
+    email:"", password:"", name:"", photo_url:"",
+    company:"", designation:"", years_experience:"",
+    linkedin_url:"", bio:"",
+    expertise:[], skills:"", industry:"", communities:[], languages:""
+  });
+
+  function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
+
+  async function handleSignup() {
+    setLoading(true);
+    const { data: authData, error: authError } = await sb.auth.signUp({ email: form.email, password: form.password });
+    if (authError) { notify(authError.message, "error"); setLoading(false); return; }
+    const user = authData.user;
+    const { error: rowError } = await sb.from("mentors").insert({
+      id: user.id, email: form.email, name: form.name,
+      photo_url: form.photo_url || null, company: form.company,
+      designation: form.designation,
+      years_experience: parseInt(form.years_experience) || 0,
+      linkedin_url: form.linkedin_url || null, bio: form.bio || null,
+      expertise: form.expertise.join(","), skills: form.skills,
+      industry: form.industry, languages: form.languages,
+      status: "pending"
+    });
+    setLoading(false);
+    if (rowError) { notify("Profile save failed: " + rowError.message, "error"); return; }
+    notify("Application submitted! You'll hear from us once reviewed.", "ok");
+    setMode("login");
+  }
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    setLoading(true);
+    const { error } = await sb.auth.signInWithPassword({ email: form.email, password: form.password });
+    setLoading(false);
+    if (error) { notify(error.message, "error"); return; }
+    onAuthed();
+  }
+
+  async function handleForgot(e) {
+    e.preventDefault();
+    setLoading(true);
+    const { error } = await sb.auth.resetPasswordForEmail(form.email, { redirectTo: window.location.origin + "/mentors" });
+    setLoading(false);
+    if (error) { notify(error.message, "error"); return; }
+    notify("Reset link sent — check your email.", "ok");
+    setMode("login");
+  }
+
+  const EXPERTISE_OPTIONS = ["Finance","Marketing","Consulting","Operations","Technology","Product","HR","Legal"];
+  const COMMUNITY_OPTIONS = ["Finance","Marketing","Consulting","Technology","Operations"];
+
+  function toggleArr(k, v) {
+    set(k, form[k].includes(v) ? form[k].filter(x=>x!==v) : [...form[k], v]);
+  }
+
+  function ChipSelect({ options, selected, onToggle }) {
+    return h("div", { style:{ display:"flex", flexWrap:"wrap", gap:8 } },
+      options.map(o => h("div", {
+        key:o, onClick:() => onToggle(o),
+        style:{
+          padding:"6px 14px", borderRadius:999, fontSize:13, cursor:"pointer", fontWeight:600,
+          background: selected.includes(o) ? "var(--purple)" : "var(--lavender-soft)",
+          color: selected.includes(o) ? "#fff" : "var(--ink)",
+          border: "1.5px solid " + (selected.includes(o) ? "var(--purple)" : "var(--lavender)")
+        }
+      }, o))
+    );
+  }
+
+  const loginForm = () => h("form", { onSubmit: handleLogin },
+    h(Field, { label:"Email" }, h("input", { type:"email", required:true, value:form.email, onChange:e=>set("email",e.target.value), placeholder:"you@university.ac.in" })),
+    h(Field, { label:"Password" }, h("input", { type:"password", required:true, value:form.password, onChange:e=>set("password",e.target.value), placeholder:"••••••••" })),
+    h("div", { style:{ textAlign:"right", marginBottom:18 } },
+      h("span", { onClick:()=>setMode("forgot"), style:{ fontSize:13, color:"var(--purple)", cursor:"pointer" } }, "Forgot password?")
+    ),
+    h("button", { className:"btn btn-primary", type:"submit", style:{ width:"100%" }, disabled:loading }, loading ? "Signing in…" : "Sign in"),
+    h("div", { style:{ textAlign:"center", marginTop:16, fontSize:13 } },
+      "New mentor? ", h("span", { onClick:()=>{ setMode("signup"); setStep(1); }, style:{ color:"var(--purple)", cursor:"pointer", fontWeight:600 } }, "Apply here")
+    )
+  );
+
+  const signupStep1 = () => h("div", null,
+    h(Field, { label:"Full name" }, h("input", { required:true, value:form.name, onChange:e=>set("name",e.target.value), placeholder:"Priya Sharma" })),
+    h(Field, { label:"Work email" }, h("input", { type:"email", required:true, value:form.email, onChange:e=>set("email",e.target.value), placeholder:"priya@company.com" })),
+    h(Field, { label:"Password" }, h("input", { type:"password", required:true, value:form.password, onChange:e=>set("password",e.target.value), placeholder:"Min 8 characters" })),
+    h(Field, { label:"Current company" }, h("input", { required:true, value:form.company, onChange:e=>set("company",e.target.value), placeholder:"McKinsey & Company" })),
+    h(Field, { label:"Designation" }, h("input", { required:true, value:form.designation, onChange:e=>set("designation",e.target.value), placeholder:"Associate" })),
+    h("div", { style:{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 } },
+      h(Field, { label:"Years of experience" }, h("input", { type:"number", min:0, max:50, value:form.years_experience, onChange:e=>set("years_experience",e.target.value), placeholder:"3" })),
+      h(Field, { label:"Industry" }, h("select", { value:form.industry, onChange:e=>set("industry",e.target.value) },
+        h("option", { value:"" }, "Select…"),
+        ["Finance","Consulting","Technology","FMCG","Healthcare","Legal","Other"].map(o => h("option", { key:o, value:o }, o))
+      ))
+    ),
+    h("div", { style:{ display:"flex", justifyContent:"flex-end", marginTop:8 } },
+      h("button", { className:"btn btn-primary", onClick:()=> {
+        if (!form.name||!form.email||!form.password||!form.company||!form.designation) { alert("Fill all required fields."); return; }
+        setStep(2);
+      } }, "Next →")
+    )
+  );
+
+  const signupStep2 = () => h("div", null,
+    h(Field, { label:"LinkedIn profile URL" }, h("input", { value:form.linkedin_url, onChange:e=>set("linkedin_url",e.target.value), placeholder:"https://linkedin.com/in/priyasharma" })),
+    h(Field, { label:"Short bio", hint:"2–3 sentences about your career and what you help students with." }, h("textarea", { rows:3, value:form.bio, onChange:e=>set("bio",e.target.value), placeholder:"I'm a finance professional with 5 years at…" })),
+    h(Field, { label:"Expertise areas" }, h(ChipSelect, { options:EXPERTISE_OPTIONS, selected:form.expertise, onToggle:v=>toggleArr("expertise",v) })),
+    h(Field, { label:"Key skills", hint:"Comma-separated" }, h("input", { value:form.skills, onChange:e=>set("skills",e.target.value), placeholder:"Financial modelling, DCF, Excel, PowerPoint" })),
+    h(Field, { label:"Communities you'll contribute to" }, h(ChipSelect, { options:COMMUNITY_OPTIONS, selected:form.communities, onToggle:v=>toggleArr("communities",v) })),
+    h(Field, { label:"Languages spoken", hint:"Comma-separated" }, h("input", { value:form.languages, onChange:e=>set("languages",e.target.value), placeholder:"English, Hindi" })),
+    h("div", { style:{ display:"flex", gap:10, marginTop:8, justifyContent:"flex-end" } },
+      h("button", { className:"btn btn-ghost", onClick:()=>setStep(1) }, "← Back"),
+      h("button", { className:"btn btn-primary", onClick:handleSignup, disabled:loading }, loading ? "Submitting…" : "Submit application")
+    )
+  );
+
+  const forgotForm = () => h("form", { onSubmit:handleForgot },
+    h("div", { style:{ fontSize:14, color:"var(--muted)", marginBottom:16 } }, "Enter your email and we'll send a reset link."),
+    h(Field, { label:"Email" }, h("input", { type:"email", required:true, value:form.email, onChange:e=>set("email",e.target.value) })),
+    h("button", { className:"btn btn-primary", type:"submit", style:{ width:"100%" }, disabled:loading }, loading ? "Sending…" : "Send reset link"),
+    h("div", { style:{ textAlign:"center", marginTop:12, fontSize:13 } },
+      h("span", { onClick:()=>setMode("login"), style:{ color:"var(--purple)", cursor:"pointer" } }, "← Back to sign in")
+    )
+  );
+
+  const titles = { login:"Welcome back", signup: step===1 ? "Create your mentor profile" : "Tell us more", forgot:"Reset password" };
+
+  return h("div", { style:{
+    minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center",
+    background:"linear-gradient(135deg, var(--purple-deep) 0%, var(--purple) 100%)", padding:20
+  } },
+    h("div", { className:"card", style:{ width:"100%", maxWidth:500, padding:36 } },
+      h("div", { style:{ textAlign:"center", marginBottom:24 } },
+        h("div", { style:{ fontSize:22, fontWeight:800, marginBottom:4 } }, titles[mode]),
+        mode === "signup" && h("div", { style:{ display:"flex", gap:8, justifyContent:"center", marginTop:8 } },
+          [1,2].map(s => h("div", { key:s, style:{
+            width:28, height:6, borderRadius:999, background: step >= s ? "var(--purple)" : "var(--lavender)"
+          } }))
+        )
+      ),
+      mode === "login"  && loginForm(),
+      mode === "signup" && (step === 1 ? signupStep1() : signupStep2()),
+      mode === "forgot" && forgotForm()
+    )
+  );
+}
+
+// ─── PENDING / REJECTED SCREENS ──────────────────────────────
+function PendingScreen({ mentor, onLogout }) {
+  return h("div", { style:{
+    minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center",
+    background:"var(--lavender-soft)", padding:20
+  } },
+    h("div", { className:"card", style:{ maxWidth:480, padding:40, textAlign:"center" } },
+      h("div", { style:{ fontSize:48, marginBottom:16 } }, "⏳"),
+      h("div", { style:{ fontSize:22, fontWeight:800, marginBottom:8 } }, "Application under review"),
+      h("div", { style:{ color:"var(--muted)", fontSize:14, lineHeight:1.7, marginBottom:24 } },
+        "Thanks for applying, ", h("strong", null, mentor?.name || ""), ". Our team will review your profile and get back to you within 2–3 business days. You'll receive an email once you're approved."
+      ),
+      h("button", { className:"btn btn-ghost", onClick:onLogout }, "Sign out")
+    )
+  );
+}
+
+function RejectedScreen({ mentor, onLogout }) {
+  return h("div", { style:{
+    minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center",
+    background:"var(--lavender-soft)", padding:20
+  } },
+    h("div", { className:"card", style:{ maxWidth:480, padding:40, textAlign:"center" } },
+      h("div", { style:{ fontSize:48, marginBottom:16 } }, "✉️"),
+      h("div", { style:{ fontSize:22, fontWeight:800, marginBottom:8 } }, "Application not approved"),
+      h("div", { style:{ color:"var(--muted)", fontSize:14, lineHeight:1.7, marginBottom:8 } },
+        "Unfortunately your application wasn't approved at this time."
+      ),
+      mentor?.rejection_reason && h("div", { style:{
+        background:"var(--lavender-soft)", borderRadius:10, padding:14, fontSize:13, marginBottom:16, textAlign:"left"
+      } }, h("strong", null, "Reason: "), mentor.rejection_reason),
+      h("div", { style:{ color:"var(--muted)", fontSize:13, marginBottom:24 } }, "If you have questions, contact support@campus2board.in"),
+      h("button", { className:"btn btn-ghost", onClick:onLogout }, "Sign out")
+    )
+  );
+}
+
+// ─── DASHBOARD ───────────────────────────────────────────────
+function Dashboard({ mentor, notify }) {
+  const [stats, setStats] = useState({ pending:0, upcoming:0, completed:0, totalStudents:0 });
+  const [todaySessions, setTodaySessions] = useState([]);
+  const [recentBookings, setRecentBookings] = useState([]);
+  useEffect(() => { load(); }, []);
+
+  async function load() {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate()+1);
+    const [b_pending, b_upcoming, b_done, sessions] = await Promise.all([
+      sb.from("bookings").select("id",{count:"exact",head:true}).eq("mentor_id",mentor.id).eq("status","pending"),
+      sb.from("bookings").select("id",{count:"exact",head:true}).eq("mentor_id",mentor.id).eq("status","approved"),
+      sb.from("bookings").select("id",{count:"exact",head:true}).eq("mentor_id",mentor.id).eq("status","completed"),
+      sb.from("live_sessions").select("*").eq("mentor_id",mentor.id).gte("scheduled_at",today.toISOString()).lt("scheduled_at",tomorrow.toISOString()),
+    ]);
+    const { data: recent } = await sb.from("bookings").select("*, students(name)").eq("mentor_id",mentor.id).order("created_at",{ascending:false}).limit(5);
+    setStats({ pending:b_pending.count||0, upcoming:b_upcoming.count||0, completed:b_done.count||0 });
+    setTodaySessions(sessions.data||[]);
+    setRecentBookings(recent||[]);
+  }
+
+  const statCards = [
+    { label:"Pending requests", value:stats.pending, accent:"var(--gold)" },
+    { label:"Upcoming bookings", value:stats.upcoming, accent:"var(--purple)" },
+    { label:"Sessions completed", value:stats.completed, accent:"var(--ok)" },
+  ];
+
+  return h("div", null,
+    h("div", { style:{ marginBottom:24 } },
+      h("div", { style:{ fontSize:22, fontWeight:800 } }, "Good " + (new Date().getHours()<12?"morning":new Date().getHours()<17?"afternoon":"evening") + ", " + (mentor?.name?.split(" ")[0]||"Mentor") + " 👋"),
+      h("div", { style:{ color:"var(--muted)", fontSize:14 } }, new Date().toLocaleDateString("en-IN",{ weekday:"long", day:"numeric", month:"long" }))
+    ),
+    h("div", { style:{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))", gap:16, marginBottom:28 } },
+      statCards.map(s => h("div", { key:s.label, className:"card", style:{ padding:20, borderTop:"3px solid "+s.accent } },
+        h("div", { style:{ fontSize:32, fontWeight:800 } }, s.value),
+        h("div", { style:{ fontSize:13, color:"var(--muted)" } }, s.label)
+      ))
+    ),
+    h("div", { style:{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20 } },
+      h("div", { className:"card", style:{ padding:20 } },
+        h("div", { style:{ fontWeight:700, marginBottom:14 } }, "Today's sessions"),
+        todaySessions.length === 0
+          ? h("div", { style:{ color:"var(--muted)", fontSize:13 } }, "No sessions scheduled for today.")
+          : todaySessions.map(s => h("div", { key:s.id, style:{ padding:"10px 0", borderBottom:"1px solid var(--lavender)" } },
+            h("div", { style:{ fontWeight:600 } }, s.title),
+            h("div", { style:{ fontSize:12, color:"var(--muted)" } }, new Date(s.scheduled_at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}), " · ", s.session_type||"Session"),
+            s.meet_url && h("a", { href:s.meet_url, target:"_blank", rel:"noreferrer", style:{ fontSize:12, color:"var(--purple)", fontWeight:600 } }, "Join →")
+          ))
+      ),
+      h("div", { className:"card", style:{ padding:20 } },
+        h("div", { style:{ fontWeight:700, marginBottom:14 } }, "Recent booking requests"),
+        recentBookings.length === 0
+          ? h("div", { style:{ color:"var(--muted)", fontSize:13 } }, "No booking requests yet.")
+          : recentBookings.map(b => h("div", { key:b.id, style:{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderBottom:"1px solid var(--lavender)" } },
+            h("div", null,
+              h("div", { style:{ fontWeight:600, fontSize:14 } }, b.students?.name||"Student"),
+              h("div", { style:{ fontSize:12, color:"var(--muted)" } }, b.booking_type||"Session")
+            ),
+            h(StatusPill, { status:b.status })
+          ))
+      )
+    )
+  );
+}
+
+// ─── PROFILE ─────────────────────────────────────────────────
+const MAJOR_FIELDS = ["company","designation","years_experience","industry"];
+
+function ProfilePage({ mentor, onMentorUpdate, notify }) {
+  const [form, setForm]         = useState(null);
+  const [saving, setSaving]     = useState(false);
+  const [pendingEdit, setPendingEdit] = useState(null);
+
+  useEffect(() => {
+    setForm({ ...mentor });
+    if (mentor.pending_edit) {
+      try { setPendingEdit(JSON.parse(mentor.pending_edit)); } catch(_) {}
+    }
+  }, [mentor]);
+
+  function set(k,v) { setForm(f => ({ ...f, [k]:v })); }
+
+  async function save() {
+    setSaving(true);
+    const changed = {};
+    const staged  = {};
+    Object.keys(form).forEach(k => {
+      if (form[k] !== mentor[k]) {
+        if (MAJOR_FIELDS.includes(k)) staged[k] = form[k];
+        else changed[k] = form[k];
+      }
+    });
+    if (Object.keys(staged).length > 0) {
+      changed.pending_edit = JSON.stringify(staged);
+    }
+    const { error } = await sb.from("mentors").update(changed).eq("id", mentor.id);
+    setSaving(false);
+    if (error) { notify(error.message,"error"); return; }
+    notify(Object.keys(staged).length > 0
+      ? "Profile saved. Major field changes are pending admin review."
+      : "Profile updated.", "ok");
+    onMentorUpdate({ ...mentor, ...changed });
+  }
+
+  if (!form) return h("div", null, "Loading…");
+
+  return h("div", null,
+    h("div", { style:{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 } },
+      h("div", null,
+        h("div", { style:{ fontSize:22, fontWeight:800 } }, "My Profile"),
+        h("div", { style:{ fontSize:13, color:"var(--muted)" } }, "Major field changes (company, designation, experience, industry) require admin re-approval before going live.")
+      )
+    ),
+    pendingEdit && h("div", { style:{
+      background:"#FFF4DA", border:"1px solid var(--gold)", borderRadius:12, padding:14, fontSize:13, marginBottom:16
+    } },
+      "⏳ ", h("strong", null, "Pending admin review: "),
+      Object.entries(pendingEdit).map(([k,v]) => `${k} → "${v}"`).join(", ")
+    ),
+    h("div", { className:"card", style:{ padding:28, maxWidth:620 } },
+      h("div", { style:{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 } },
+        h(Field, { label:"Full name" }, h("input", { value:form.name||"", onChange:e=>set("name",e.target.value) })),
+        h(Field, { label:"Email" }, h("input", { value:form.email||"", disabled:true, style:{ opacity:.6 } })),
+        h(Field, { label:"Company *" }, h("input", { value:form.company||"", onChange:e=>set("company",e.target.value) })),
+        h(Field, { label:"Designation *" }, h("input", { value:form.designation||"", onChange:e=>set("designation",e.target.value) })),
+        h(Field, { label:"Years of experience *" }, h("input", { type:"number", value:form.years_experience||"", onChange:e=>set("years_experience",e.target.value) })),
+        h(Field, { label:"Industry *" }, h("select", { value:form.industry||"", onChange:e=>set("industry",e.target.value) },
+          h("option",{value:""},"Select…"),
+          ["Finance","Consulting","Technology","FMCG","Healthcare","Legal","Other"].map(o=>h("option",{key:o,value:o},o))
+        ))
+      ),
+      h(Field, { label:"LinkedIn URL" }, h("input", { value:form.linkedin_url||"", onChange:e=>set("linkedin_url",e.target.value) })),
+      h(Field, { label:"Photo URL" }, h("input", { value:form.photo_url||"", onChange:e=>set("photo_url",e.target.value), placeholder:"https://…" })),
+      h(Field, { label:"Bio" }, h("textarea", { rows:4, value:form.bio||"", onChange:e=>set("bio",e.target.value) })),
+      h(Field, { label:"Expertise (comma-separated)" }, h("input", { value:form.expertise||"", onChange:e=>set("expertise",e.target.value) })),
+      h(Field, { label:"Skills (comma-separated)" }, h("input", { value:form.skills||"", onChange:e=>set("skills",e.target.value) })),
+      h(Field, { label:"Languages (comma-separated)" }, h("input", { value:form.languages||"", onChange:e=>set("languages",e.target.value) })),
+      h("div", { style:{ fontSize:11, color:"var(--muted)", marginBottom:12 } }, "* Major fields — changes require admin re-approval."),
+      h("button", { className:"btn btn-primary", onClick:save, disabled:saving }, saving?"Saving…":"Save profile")
+    )
+  );
+}
+
+// ─── AVAILABILITY ─────────────────────────────────────────────
+const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+const DEFAULT_SLOTS = DAYS.map(d => ({ day:d, enabled:false, start:"09:00", end:"17:00" }));
+
+function AvailabilityPage({ mentor, notify }) {
+  const [slots, setSlots]             = useState(DEFAULT_SLOTS);
+  const [vacationMode, setVacationMode] = useState(false);
+  const [vacationUntil, setVacationUntil] = useState("");
+  const [saving, setSaving]           = useState(false);
+  const [loading, setLoading]         = useState(true);
+
+  useEffect(() => { load(); }, []);
+  async function load() {
+    setLoading(true);
+    const { data } = await sb.from("mentor_availability").select("*").eq("mentor_id", mentor.id);
+    if (data && data.length > 0) {
+      const updated = DEFAULT_SLOTS.map(def => {
+        const row = data.find(d => d.day_of_week === def.day);
+        return row ? { day:def.day, enabled:row.is_available, start:row.start_time?.slice(0,5)||"09:00", end:row.end_time?.slice(0,5)||"17:00" } : def;
+      });
+      setSlots(updated);
+    }
+    const { data: mentorRow } = await sb.from("mentors").select("vacation_mode,vacation_until").eq("id",mentor.id).single();
+    if (mentorRow) { setVacationMode(!!mentorRow.vacation_mode); setVacationUntil(mentorRow.vacation_until||""); }
+    setLoading(false);
+  }
+
+  function toggleDay(day) {
+    setSlots(s => s.map(slot => slot.day===day ? { ...slot, enabled:!slot.enabled } : slot));
+  }
+  function setTime(day, field, val) {
+    setSlots(s => s.map(slot => slot.day===day ? { ...slot, [field]:val } : slot));
+  }
+
+  async function save() {
+    setSaving(true);
+    const rows = slots.map(s => ({
+      mentor_id:mentor.id, day_of_week:s.day, is_available:s.enabled,
+      start_time:s.start, end_time:s.end
+    }));
+    const { error: avErr } = await sb.from("mentor_availability").upsert(rows, { onConflict:"mentor_id,day_of_week" });
+    const { error: mErr  } = await sb.from("mentors").update({ vacation_mode:vacationMode, vacation_until:vacationUntil||null }).eq("id",mentor.id);
+    setSaving(false);
+    if (avErr||mErr) { notify((avErr||mErr).message,"error"); return; }
+    notify("Availability saved.","ok");
+  }
+
+  if (loading) return h("div",{style:{color:"var(--muted)"}},"Loading…");
+
+  return h("div", null,
+    h("div", { style:{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 } },
+      h("div", null,
+        h("div", { style:{ fontSize:22, fontWeight:800 } }, "Availability"),
+        h("div", { style:{ fontSize:13, color:"var(--muted)" } }, "Set your weekly hours. Students can only book during active windows.")
+      ),
+      h("button", { className:"btn btn-primary", onClick:save, disabled:saving }, saving?"Saving…":"Save")
+    ),
+    h("div", { className:"card", style:{ padding:20, marginBottom:20, maxWidth:620 } },
+      h("div", { style:{ display:"flex", alignItems:"center", gap:12, marginBottom:16 } },
+        h("label", { style:{ display:"flex", alignItems:"center", gap:8, fontWeight:700, fontSize:15, cursor:"pointer" } },
+          h("input", { type:"checkbox", style:{width:16}, checked:vacationMode, onChange:e=>setVacationMode(e.target.checked) }),
+          "Vacation mode — hide me from all bookings"
+        )
+      ),
+      vacationMode && h("div", { style:{ display:"flex", alignItems:"center", gap:12 } },
+        h("label", { style:{ fontSize:13, fontWeight:600 } }, "Return date"),
+        h("input", { type:"date", style:{ width:180 }, value:vacationUntil, onChange:e=>setVacationUntil(e.target.value) })
+      )
+    ),
+    h("div", { className:"card", style:{ padding:20, maxWidth:620 } },
+      slots.map(s => h("div", { key:s.day, style:{
+        display:"flex", alignItems:"center", gap:14, padding:"10px 0",
+        borderBottom:"1px solid var(--lavender)", opacity:s.enabled?1:0.5
+      } },
+        h("input", { type:"checkbox", style:{width:16}, checked:s.enabled, onChange:()=>toggleDay(s.day) }),
+        h("div", { style:{ width:100, fontWeight:600, fontSize:14 } }, s.day),
+        s.enabled && h(React.Fragment, null,
+          h("input", { type:"time", style:{ width:120 }, value:s.start, onChange:e=>setTime(s.day,"start",e.target.value) }),
+          h("span", { style:{ color:"var(--muted)" } }, "–"),
+          h("input", { type:"time", style:{ width:120 }, value:s.end, onChange:e=>setTime(s.day,"end",e.target.value) })
+        ),
+        !s.enabled && h("span", { style:{ fontSize:13, color:"var(--muted)" } }, "Unavailable")
+      ))
+    )
+  );
+}
+
+// ─── BOOKINGS ────────────────────────────────────────────────
+function BookingsPage({ mentor, notify }) {
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [tab, setTab]           = useState("pending");
+  const [rescheduleTarget, setRescheduleTarget] = useState(null);
+  const [rejectTarget, setRejectTarget] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [newDate, setNewDate] = useState("");
+
+  useEffect(() => { load(); }, []);
+  async function load() {
+    setLoading(true);
+    const { data, error } = await sb.from("bookings").select("*, students(name, email)").eq("mentor_id",mentor.id).order("scheduled_at",{ascending:false});
+    if (error) notify(error.message,"error");
+    setBookings(data||[]);
+    setLoading(false);
+  }
+
+  async function approve(id) {
+    const { error } = await sb.from("bookings").update({ status:"approved" }).eq("id",id);
+    if (error) { notify(error.message,"error"); return; }
+    notify("Booking approved.","ok"); load();
+  }
+
+  async function reject() {
+    const { error } = await sb.from("bookings").update({ status:"rejected", rejection_reason:rejectReason }).eq("id",rejectTarget.id);
+    if (error) { notify(error.message,"error"); return; }
+    notify("Booking rejected.","ok"); setRejectTarget(null); setRejectReason(""); load();
+  }
+
+  async function reschedule() {
+    if (!newDate) { notify("Pick a date/time.","error"); return; }
+    const LEAD_HOURS = 6;
+    if (new Date(newDate) < new Date(Date.now() + LEAD_HOURS*3600*1000)) {
+      notify("New time must be at least 6 hours from now.","error"); return;
+    }
+    const { error } = await sb.from("bookings").update({ scheduled_at:new Date(newDate).toISOString(), status:"pending" }).eq("id",rescheduleTarget.id);
+    if (error) { notify(error.message,"error"); return; }
+    notify("Rescheduled — student notified.","ok"); setRescheduleTarget(null); setNewDate(""); load();
+  }
+
+  const TABS = ["pending","approved","completed","cancelled","rejected"];
+  const filtered = useMemo(() => bookings.filter(b => b.status===tab), [bookings, tab]);
+
+  return h("div", null,
+    h("div", { style:{ marginBottom:20 } },
+      h("div", { style:{ fontSize:22, fontWeight:800 } }, "Bookings"),
+      h("div", { style:{ fontSize:13, color:"var(--muted)" } }, "All 1:1 session requests from students.")
+    ),
+    h("div", { style:{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:16 } },
+      TABS.map(t => h("div", { key:t, onClick:()=>setTab(t), style:{
+        padding:"8px 16px", borderRadius:10, cursor:"pointer", fontSize:13, fontWeight:600,
+        background: tab===t?"var(--purple)":"#fff",
+        color: tab===t?"#fff":"var(--ink)",
+        border:"1.5px solid "+(tab===t?"var(--purple)":"var(--lavender)")
+      } }, t[0].toUpperCase()+t.slice(1)+" ("+bookings.filter(b=>b.status===t).length+")"))
+    ),
+    loading ? h("div",{style:{color:"var(--muted)"}},"Loading…")
+      : filtered.length===0 ? h(EmptyState,{title:`No ${tab} bookings`,body:"Nothing here right now."})
+      : h("div", { style:{ display:"flex", flexDirection:"column", gap:12 } },
+        filtered.map(b => h("div", { key:b.id, className:"card", style:{ padding:18 } },
+          h("div", { style:{ display:"flex", justifyContent:"space-between", flexWrap:"wrap", gap:12 } },
+            h("div", null,
+              h("div", { style:{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" } },
+                h("span", { style:{ fontWeight:700 } }, b.students?.name||"Student"),
+                h(StatusPill, { status:b.status })
+              ),
+              h("div", { style:{ fontSize:13, color:"var(--muted)" } }, b.booking_type||"1:1 session"),
+              b.scheduled_at && h("div", { style:{ fontSize:13 } }, new Date(b.scheduled_at).toLocaleString("en-IN",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})),
+              b.student_note && h("div", { style:{ fontSize:13, marginTop:6, fontStyle:"italic" } }, '"', b.student_note, '"')
+            ),
+            h("div", { style:{ display:"flex", gap:8, flexShrink:0, flexWrap:"wrap" } },
+              b.status==="pending" && h("button",{className:"btn btn-ok",style:{padding:"6px 12px"},onClick:()=>approve(b.id)},"Approve"),
+              b.status==="pending" && h("button",{className:"btn btn-danger",style:{padding:"6px 12px"},onClick:()=>{ setRejectTarget(b); setRejectReason(""); }},"Reject"),
+              (b.status==="pending"||b.status==="approved") && h("button",{className:"btn btn-ghost",style:{padding:"6px 12px"},onClick:()=>{ setRescheduleTarget(b); setNewDate(""); }},"Reschedule")
+            )
+          )
+        ))
+      ),
+    rejectTarget && h(Modal,{title:"Reject booking",onClose:()=>setRejectTarget(null),width:400},
+      h("div",{style:{marginBottom:12,fontSize:13}},"Optionally give the student a reason."),
+      h("textarea",{rows:3,value:rejectReason,onChange:e=>setRejectReason(e.target.value),placeholder:"e.g. I'm unavailable at this time…",style:{marginBottom:14}}),
+      h("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},
+        h("button",{className:"btn btn-ghost",onClick:()=>setRejectTarget(null)},"Cancel"),
+        h("button",{className:"btn btn-danger",onClick:reject},"Reject booking")
+      )
+    ),
+    rescheduleTarget && h(Modal,{title:"Reschedule booking",onClose:()=>setRescheduleTarget(null),width:400},
+      h("div",{style:{marginBottom:10,fontSize:13}},"Booking must be rescheduled at least 6 hours from now."),
+      h("input",{type:"datetime-local",value:newDate,onChange:e=>setNewDate(e.target.value),style:{marginBottom:14}}),
+      h("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},
+        h("button",{className:"btn btn-ghost",onClick:()=>setRescheduleTarget(null)},"Cancel"),
+        h("button",{className:"btn btn-primary",onClick:reschedule},"Confirm reschedule")
+      )
+    )
+  );
+}
+
+// ─── LIVE SESSIONS ────────────────────────────────────────────
+function SessionForm({ initial, onSave, onClose }) {
+  const [form, setForm] = useState({
+    title: initial?.title||"", session_type: initial?.session_type||"ama",
+    description: initial?.description||"", scheduled_at: initial?.scheduled_at ? new Date(initial.scheduled_at).toISOString().slice(0,16) : "",
+    max_participants: initial?.max_participants||50, meet_url: initial?.meet_url||""
+  });
+  function set(k,v){ setForm(f=>({...f,[k]:v})); }
+  return h("form",{onSubmit:e=>{e.preventDefault();onSave(form);}},
+    h(Field,{label:"Title"},h("input",{required:true,value:form.title,onChange:e=>set("title",e.target.value),placeholder:"AMA: Breaking into consulting"})),
+    h(Field,{label:"Type"},h("select",{value:form.session_type,onChange:e=>set("session_type",e.target.value)},
+      ["ama","resume_review","mock_interview","workshop","webinar"].map(o=>h("option",{key:o,value:o},o.replace("_"," ").replace(/\b\w/g,c=>c.toUpperCase())))
+    )),
+    h(Field,{label:"Description"},h("textarea",{rows:3,value:form.description,onChange:e=>set("description",e.target.value)})),
+    h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}},
+      h(Field,{label:"Date & time"},h("input",{type:"datetime-local",required:true,value:form.scheduled_at,onChange:e=>set("scheduled_at",e.target.value)})),
+      h(Field,{label:"Max participants"},h("input",{type:"number",min:1,max:500,value:form.max_participants,onChange:e=>set("max_participants",e.target.value)}))
+    ),
+    h(Field,{label:"Google Meet / Zoom link"},h("input",{value:form.meet_url,onChange:e=>set("meet_url",e.target.value),placeholder:"https://meet.google.com/…"})),
+    h("div",{style:{display:"flex",gap:10,justifyContent:"flex-end",marginTop:8}},
+      h("button",{type:"button",className:"btn btn-ghost",onClick:onClose},"Cancel"),
+      h("button",{type:"submit",className:"btn btn-primary"},initial?.id?"Save changes":"Create session")
+    )
+  );
+}
+
+function LiveSessionsPage({ mentor, notify }) {
+  const [sessions, setSessions] = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [editing, setEditing]   = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+
+  useEffect(()=>{load();},[]);
+  async function load(){
+    setLoading(true);
+    const {data,error}=await sb.from("live_sessions").select("*").eq("mentor_id",mentor.id).order("scheduled_at",{ascending:false});
+    if(error)notify(error.message,"error");
+    setSessions(data||[]);setLoading(false);
+  }
+  async function save(form){
+    const row={...form,mentor_id:mentor.id,scheduled_at:new Date(form.scheduled_at).toISOString(),status:editing?.id?editing.status:"upcoming"};
+    const {error}=editing?.id
+      ? await sb.from("live_sessions").update(row).eq("id",editing.id)
+      : await sb.from("live_sessions").insert(row);
+    if(error){notify(error.message,"error");return;}
+    notify(editing?.id?"Session updated.":"Session created.","ok");setEditing(null);load();
+  }
+  async function cancel(s){
+    const{error}=await sb.from("live_sessions").update({status:"cancelled"}).eq("id",s.id);
+    if(error){notify(error.message,"error");return;}
+    notify("Session cancelled.","ok");load();
+  }
+  async function del(){
+    const{error}=await sb.from("live_sessions").delete().eq("id",confirmDelete.id);
+    if(error){notify(error.message,"error");setConfirmDelete(null);return;}
+    notify("Session deleted.","ok");setConfirmDelete(null);load();
+  }
+  return h("div",null,
+    h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},
+      h("div",null,
+        h("div",{style:{fontSize:22,fontWeight:800}},"Live Sessions"),
+        h("div",{style:{fontSize:13,color:"var(--muted)"}},"Host AMAs, resume reviews, mock interviews, and workshops.")
+      ),
+      h("button",{className:"btn btn-primary",onClick:()=>setEditing({})},"+ New session")
+    ),
+    loading?h("div",{style:{color:"var(--muted)"}},"Loading…")
+      :sessions.length===0?h(EmptyState,{icon:"▶",title:"No sessions yet",body:"Create your first live session to get started."})
+      :h("div",{style:{display:"flex",flexDirection:"column",gap:12}},
+        sessions.map(s=>h("div",{key:s.id,className:"card",style:{padding:18}},
+          h("div",{style:{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:12}},
+            h("div",null,
+              h("div",{style:{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}},
+                h("span",{style:{fontWeight:700}},s.title),
+                h(StatusPill,{status:s.status})
+              ),
+              h("div",{style:{fontSize:13,color:"var(--muted)"}},(s.session_type||"session").replace("_"," ").replace(/\b\w/g,c=>c.toUpperCase())," · ",s.max_participants," max"),
+              s.scheduled_at&&h("div",{style:{fontSize:13}},new Date(s.scheduled_at).toLocaleString("en-IN",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})),
+              s.meet_url&&h("a",{href:s.meet_url,target:"_blank",rel:"noreferrer",style:{fontSize:12,color:"var(--purple)",fontWeight:600}},"Join link →")
+            ),
+            h("div",{style:{display:"flex",gap:8,flexShrink:0,flexWrap:"wrap"}},
+              s.status==="upcoming"&&h("button",{className:"btn btn-ghost",style:{padding:"6px 12px"},onClick:()=>setEditing(s)},"Edit"),
+              s.status==="upcoming"&&h("button",{className:"btn btn-danger",style:{padding:"6px 12px"},onClick:()=>cancel(s)},"Cancel"),
+              h("button",{className:"btn btn-danger",style:{padding:"6px 12px"},onClick:()=>setConfirmDelete(s)},"Delete")
+            )
+          )
+        ))
+      ),
+    editing&&h(Modal,{title:editing.id?"Edit session":"New session",onClose:()=>setEditing(null),width:540},
+      h(SessionForm,{initial:editing,onSave:save,onClose:()=>setEditing(null)})
+    ),
+    confirmDelete&&h(ConfirmModal,{title:"Delete session?",body:`This permanently removes "${confirmDelete.title}".`,confirmLabel:"Delete",onConfirm:del,onClose:()=>setConfirmDelete(null)})
+  );
+}
+
+// ─── COURSES ─────────────────────────────────────────────────
+function CourseForm({ initial, onSave, onClose }) {
+  const [form,setForm]=useState({title:initial?.title||"",description:initial?.description||"",thumbnail_url:initial?.thumbnail_url||"",community:initial?.community||""});
+  function set(k,v){setForm(f=>({...f,[k]:v}));}
+  return h("form",{onSubmit:e=>{e.preventDefault();onSave(form);}},
+    h(Field,{label:"Title"},h("input",{required:true,value:form.title,onChange:e=>set("title",e.target.value),placeholder:"Breaking into Investment Banking"})),
+    h(Field,{label:"Description"},h("textarea",{rows:3,value:form.description,onChange:e=>set("description",e.target.value)})),
+    h(Field,{label:"Community"},h("select",{value:form.community,onChange:e=>set("community",e.target.value)},
+      h("option",{value:""},"All communities"),
+      ["Finance","Marketing","Consulting","Technology","Operations"].map(o=>h("option",{key:o,value:o},o))
+    )),
+    h(Field,{label:"Thumbnail URL (optional)"},h("input",{value:form.thumbnail_url,onChange:e=>set("thumbnail_url",e.target.value),placeholder:"https://…"})),
+    h("div",{style:{display:"flex",gap:10,justifyContent:"flex-end",marginTop:8}},
+      h("button",{type:"button",className:"btn btn-ghost",onClick:onClose},"Cancel"),
+      h("button",{type:"submit",className:"btn btn-primary"},initial?.id?"Save changes":"Create course")
+    )
+  );
+}
+
+function CoursesPage({ mentor, notify }) {
+  const [courses,setCourses]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [tab,setTab]=useState("draft");
+  const [editing,setEditing]=useState(null);
+  const [confirmDelete,setConfirmDelete]=useState(null);
+
+  useEffect(()=>{load();},[]);
+  async function load(){
+    setLoading(true);
+    const{data,error}=await sb.from("courses").select("*").eq("mentor_id",mentor.id).order("created_at",{ascending:false});
+    if(error)notify(error.message,"error");
+    setCourses(data||[]);setLoading(false);
+  }
+  async function save(form){
+    const row={...form,mentor_id:mentor.id,status:editing?.id?editing.status:"draft"};
+    const{error}=editing?.id?await sb.from("courses").update(row).eq("id",editing.id):await sb.from("courses").insert(row);
+    if(error){notify(error.message,"error");return;}
+    notify(editing?.id?"Course updated.":"Course created as draft.","ok");setEditing(null);load();
+  }
+  async function setStatus(id,status){
+    const{error}=await sb.from("courses").update({status}).eq("id",id);
+    if(error){notify(error.message,"error");return;}
+    notify(`Course ${status}.`,"ok");load();
+  }
+  async function del(){
+    const{error}=await sb.from("courses").delete().eq("id",confirmDelete.id);
+    if(error){notify(error.message,"error");setConfirmDelete(null);return;}
+    notify("Course deleted.","ok");setConfirmDelete(null);load();
+  }
+  const TABS=["draft","published","archived"];
+  const filtered=useMemo(()=>courses.filter(c=>c.status===tab),[courses,tab]);
+  return h("div",null,
+    h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},
+      h("div",null,
+        h("div",{style:{fontSize:22,fontWeight:800}},"Courses"),
+        h("div",{style:{fontSize:13,color:"var(--muted)"}},"Draft courses are only visible to you. Published courses go live after admin review.")
+      ),
+      h("button",{className:"btn btn-primary",onClick:()=>setEditing({})},"+ New course")
+    ),
+    h("div",{style:{display:"flex",gap:8,marginBottom:16}},
+      TABS.map(t=>h("div",{key:t,onClick:()=>setTab(t),style:{
+        padding:"8px 16px",borderRadius:10,cursor:"pointer",fontSize:13,fontWeight:600,
+        background:tab===t?"var(--purple)":"#fff",color:tab===t?"#fff":"var(--ink)",
+        border:"1.5px solid "+(tab===t?"var(--purple)":"var(--lavender)")
+      }},t[0].toUpperCase()+t.slice(1)+" ("+courses.filter(c=>c.status===t).length+")"))
+    ),
+    loading?h("div",{style:{color:"var(--muted)"}},"Loading…")
+      :filtered.length===0?h(EmptyState,{icon:"▣",title:`No ${tab} courses`,body:"Nothing here right now."})
+      :h("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:16}},
+        filtered.map(c=>h("div",{key:c.id,className:"card",style:{overflow:"hidden"}},
+          h("div",{style:{height:80,background:c.thumbnail_url?`url(${c.thumbnail_url}) center/cover`:"linear-gradient(135deg,var(--purple),var(--gold))"}}),
+          h("div",{style:{padding:16}},
+            h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}},
+              h("div",{style:{fontWeight:700,fontSize:15}}),
+              h(StatusPill,{status:c.status})
+            ),
+            h("div",{style:{fontWeight:700,marginBottom:4}},c.title),
+            h("div",{style:{fontSize:13,color:"var(--muted)",marginBottom:12,minHeight:36}},c.description||"No description."),
+            h("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
+              h("button",{className:"btn btn-ghost",style:{padding:"6px 12px"},onClick:()=>setEditing(c)},"Edit"),
+              c.status==="draft"&&h("button",{className:"btn btn-ok",style:{padding:"6px 12px"},onClick:()=>setStatus(c.id,"published")},"Publish"),
+              c.status==="published"&&h("button",{className:"btn btn-ghost",style:{padding:"6px 12px"},onClick:()=>setStatus(c.id,"archived")},"Archive"),
+              c.status==="archived"&&h("button",{className:"btn btn-ghost",style:{padding:"6px 12px"},onClick:()=>setStatus(c.id,"draft")},"Restore"),
+              h("button",{className:"btn btn-danger",style:{padding:"6px 12px"},onClick:()=>setConfirmDelete(c)},"Delete")
+            )
+          )
+        ))
+      ),
+    editing&&h(Modal,{title:editing.id?"Edit course":"New course",onClose:()=>setEditing(null),width:520},
+      h(CourseForm,{initial:editing,onSave:save,onClose:()=>setEditing(null)})
+    ),
+    confirmDelete&&h(ConfirmModal,{title:"Delete course?",body:`This permanently removes "${confirmDelete.title}".`,confirmLabel:"Delete",onConfirm:del,onClose:()=>setConfirmDelete(null)})
+  );
+}
+
+// ─── RESOURCES ───────────────────────────────────────────────
+function ResourceForm({ initial, onSave, onClose }) {
+  const [form,setForm]=useState({title:initial?.title||"",type:initial?.type||"article",url:initial?.url||"",description:initial?.description||""});
+  function set(k,v){setForm(f=>({...f,[k]:v}));}
+  return h("form",{onSubmit:e=>{e.preventDefault();onSave(form);}},
+    h(Field,{label:"Title"},h("input",{required:true,value:form.title,onChange:e=>set("title",e.target.value),placeholder:"The Ultimate Guide to Case Interviews"})),
+    h(Field,{label:"Type"},h("select",{value:form.type,onChange:e=>set("type",e.target.value)},
+      ["article","pdf","video","spreadsheet","link","other"].map(o=>h("option",{key:o,value:o},o[0].toUpperCase()+o.slice(1)))
+    )),
+    h(Field,{label:"URL"},h("input",{required:true,value:form.url,onChange:e=>set("url",e.target.value),placeholder:"https://…"})),
+    h(Field,{label:"Description"},h("textarea",{rows:2,value:form.description,onChange:e=>set("description",e.target.value)})),
+    h("div",{style:{display:"flex",gap:10,justifyContent:"flex-end",marginTop:8}},
+      h("button",{type:"button",className:"btn btn-ghost",onClick:onClose},"Cancel"),
+      h("button",{type:"submit",className:"btn btn-primary"},initial?.id?"Save changes":"Add resource")
+    )
+  );
+}
+
+function ResourcesPage({ mentor, notify }) {
+  const [resources,setResources]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [editing,setEditing]=useState(null);
+  const [confirmDelete,setConfirmDelete]=useState(null);
+
+  useEffect(()=>{load();},[]);
+  async function load(){
+    setLoading(true);
+    const{data,error}=await sb.from("resources").select("*").eq("mentor_id",mentor.id).order("created_at",{ascending:false});
+    if(error)notify(error.message,"error");
+    setResources(data||[]);setLoading(false);
+  }
+  async function save(form){
+    const row={...form,mentor_id:mentor.id,status:"visible"};
+    const{error}=editing?.id?await sb.from("resources").update(row).eq("id",editing.id):await sb.from("resources").insert(row);
+    if(error){notify(error.message,"error");return;}
+    notify(editing?.id?"Resource updated.":"Resource added.","ok");setEditing(null);load();
+  }
+  async function del(){
+    const{error}=await sb.from("resources").delete().eq("id",confirmDelete.id);
+    if(error){notify(error.message,"error");setConfirmDelete(null);return;}
+    notify("Resource deleted.","ok");setConfirmDelete(null);load();
+  }
+  const TYPE_ICONS={"article":"📄","pdf":"📑","video":"🎬","spreadsheet":"📊","link":"🔗","other":"📎"};
+  return h("div",null,
+    h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},
+      h("div",null,
+        h("div",{style:{fontSize:22,fontWeight:800}},"Resources"),
+        h("div",{style:{fontSize:13,color:"var(--muted)"}},"Share articles, PDFs, templates, and links with your students.")
+      ),
+      h("button",{className:"btn btn-primary",onClick:()=>setEditing({})},"+ Add resource")
+    ),
+    loading?h("div",{style:{color:"var(--muted)"}},"Loading…")
+      :resources.length===0?h(EmptyState,{icon:"▤",title:"No resources yet",body:"Add your first resource to get started."})
+      :h("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+        resources.map(r=>h("div",{key:r.id,className:"card",style:{padding:16,display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}},
+          h("div",{style:{display:"flex",alignItems:"center",gap:12,flex:1}},
+            h("div",{style:{fontSize:24}}),
+            h("span",{style:{fontSize:22}},(TYPE_ICONS[r.type]||"📎")),
+            h("div",null,
+              h("div",{style:{fontWeight:700}}),
+              h("span",{style:{fontWeight:700}},r.title),
+              h("div",{style:{fontSize:12,color:"var(--muted)"}},(r.type||"resource")[0].toUpperCase()+(r.type||"resource").slice(1)),
+              r.description&&h("div",{style:{fontSize:13,color:"var(--muted)",marginTop:2}},r.description)
+            )
+          ),
+          h("div",{style:{display:"flex",gap:8,flexShrink:0}},
+            h("a",{href:r.url,target:"_blank",rel:"noreferrer",className:"btn btn-ghost",style:{padding:"6px 12px",textDecoration:"none"}},"Open"),
+            h("button",{className:"btn btn-ghost",style:{padding:"6px 12px"},onClick:()=>setEditing(r)},"Edit"),
+            h("button",{className:"btn btn-danger",style:{padding:"6px 12px"},onClick:()=>setConfirmDelete(r)},"Delete")
+          )
+        ))
+      ),
+    editing&&h(Modal,{title:editing.id?"Edit resource":"Add resource",onClose:()=>setEditing(null)},
+      h(ResourceForm,{initial:editing,onSave:save,onClose:()=>setEditing(null)})
+    ),
+    confirmDelete&&h(ConfirmModal,{title:"Delete resource?",body:`Remove "${confirmDelete.title}"?`,confirmLabel:"Delete",onConfirm:del,onClose:()=>setConfirmDelete(null)})
+  );
+}
+
+// ─── DISCUSSIONS ─────────────────────────────────────────────
+function DiscussionsPage({ mentor, notify }) {
+  const [discussions,setDiscussions]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [replyTarget,setReplyTarget]=useState(null);
+  const [replyText,setReplyText]=useState("");
+
+  useEffect(()=>{load();},[]);
+  async function load(){
+    setLoading(true);
+    const{data,error}=await sb.from("discussions").select("*, communities(name), discussion_comments(id,body,author_name,is_official_answer,created_at)").order("created_at",{ascending:false}).limit(60);
+    if(error)notify(error.message,"error");
+    setDiscussions(data||[]);setLoading(false);
+  }
+
+  async function postReply(){
+    if(!replyText.trim()){notify("Reply can't be empty.","error");return;}
+    const{error}=await sb.from("discussion_comments").insert({
+      discussion_id:replyTarget.id, body:replyText,
+      author_id:mentor.id, author_name:mentor.name, is_mentor:true, is_official_answer:false
+    });
+    if(error){notify(error.message,"error");return;}
+    notify("Reply posted.","ok");setReplyTarget(null);setReplyText("");load();
+  }
+
+  async function markOfficial(commentId,current){
+    const{error}=await sb.from("discussion_comments").update({is_official_answer:!current}).eq("id",commentId);
+    if(error){notify(error.message,"error");return;}
+    load();
+  }
+
+  async function pinDiscussion(d){
+    const{error}=await sb.from("discussions").update({is_pinned:!d.is_pinned}).eq("id",d.id);
+    if(error){notify(error.message,"error");return;}
+    load();
+  }
+
+  return h("div",null,
+    h("div",{style:{marginBottom:20}},
+      h("div",{style:{fontSize:22,fontWeight:800}},"Discussions"),
+      h("div",{style:{fontSize:13,color:"var(--muted)"}},"Reply to student questions. Mark your best replies as official answers.")
+    ),
+    loading?h("div",{style:{color:"var(--muted)"}},"Loading…")
+      :discussions.length===0?h(EmptyState,{icon:"◫",title:"No discussions yet",body:"Student discussions will appear here."})
+      :h("div",{style:{display:"flex",flexDirection:"column",gap:14}},
+        discussions.map(d=>h("div",{key:d.id,className:"card",style:{padding:18}},
+          h("div",{style:{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:10,marginBottom:10}},
+            h("div",null,
+              h("div",{style:{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}},
+                h("span",{style:{fontWeight:700}}),
+                h("span",{style:{fontWeight:700}},d.title||"(untitled)"),
+                d.is_pinned&&h(StatusPill,{status:"approved"}),
+                d.is_locked&&h(StatusPill,{status:"suspended"})
+              ),
+              h("div",{style:{fontSize:12,color:"var(--muted)"}}),
+              h("div",{style:{fontSize:12,color:"var(--muted)"}},"by ",d.author_name||"Student"," · ",d.communities?.name||"General"),
+              d.content&&h("div",{style:{fontSize:13,marginTop:6,color:"var(--ink)"}},d.content.length>200?d.content.slice(0,200)+"…":d.content)
+            ),
+            h("div",{style:{display:"flex",gap:8,flexShrink:0}},
+              h("button",{className:"btn btn-ghost",style:{padding:"6px 12px"},onClick:()=>pinDiscussion(d)},d.is_pinned?"Unpin":"Pin"),
+              !d.is_locked&&h("button",{className:"btn btn-primary",style:{padding:"6px 12px"},onClick:()=>{setReplyTarget(d);setReplyText("");}},
+                d.discussion_comments?.length>0?"Reply again":"Reply"
+              )
+            )
+          ),
+          d.discussion_comments?.length>0&&h("div",{style:{borderTop:"1px solid var(--lavender)",paddingTop:10,marginTop:4,display:"flex",flexDirection:"column",gap:8}},
+            d.discussion_comments.slice(0,3).map(c=>h("div",{key:c.id,style:{
+              background:c.is_official_answer?"#E6F7EC":c.author_name===mentor.name?"var(--lavender-soft)":"#f9f9f9",
+              borderRadius:10,padding:"10px 14px",fontSize:13
+            }},
+              h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}},
+                h("div",{style:{display:"flex",gap:8,alignItems:"center"}},
+                  h("span",{style:{fontWeight:600}},c.author_name||"Mentor"),
+                  c.is_official_answer&&h(StatusPill,{status:"approved"})
+                ),
+                c.author_name===mentor.name&&h("button",{className:"btn btn-ghost",style:{padding:"3px 10px",fontSize:12},onClick:()=>markOfficial(c.id,c.is_official_answer)},
+                  c.is_official_answer?"Unmark official":"Mark official"
+                )
+              ),
+              h("div",{style:{marginTop:4}},c.body)
+            ))
+          )
+        ))
+      ),
+    replyTarget&&h(Modal,{title:"Reply to discussion",onClose:()=>setReplyTarget(null)},
+      h("div",{style:{fontWeight:600,marginBottom:10}},replyTarget.title||"(untitled)"),
+      h("textarea",{rows:4,value:replyText,onChange:e=>setReplyText(e.target.value),placeholder:"Type your reply…",style:{marginBottom:14}}),
+      h("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},
+        h("button",{className:"btn btn-ghost",onClick:()=>setReplyTarget(null)},"Cancel"),
+        h("button",{className:"btn btn-primary",onClick:postReply},"Post reply")
+      )
+    )
+  );
+}
+
+// ─── NOTIFICATIONS ───────────────────────────────────────────
+function NotificationsPage({ mentor, notify }) {
+  const [items,setItems]=useState([]);
+  const [loading,setLoading]=useState(true);
+
+  useEffect(()=>{load();},[]);
+  async function load(){
+    setLoading(true);
+    const{data,error}=await sb.from("notifications").select("*").eq("user_id",mentor.id).order("created_at",{ascending:false}).limit(50);
+    if(error)notify(error.message,"error");
+    setItems(data||[]);setLoading(false);
+  }
+  async function markRead(id){
+    await sb.from("notifications").update({is_read:true}).eq("id",id);
+    setItems(prev=>prev.map(n=>n.id===id?{...n,is_read:true}:n));
+  }
+  async function markAllRead(){
+    await sb.from("notifications").update({is_read:true}).eq("user_id",mentor.id).eq("is_read",false);
+    setItems(prev=>prev.map(n=>({...n,is_read:true})));
+  }
+
+  const unread=items.filter(n=>!n.is_read).length;
+  return h("div",null,
+    h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}},
+      h("div",null,
+        h("div",{style:{fontSize:22,fontWeight:800}},"Notifications"),
+        unread>0&&h("div",{style:{fontSize:13,color:"var(--purple)",fontWeight:600}},unread+" unread")
+      ),
+      unread>0&&h("button",{className:"btn btn-ghost",onClick:markAllRead},"Mark all as read")
+    ),
+    loading?h("div",{style:{color:"var(--muted)"}},"Loading…")
+      :items.length===0?h(EmptyState,{icon:"◔",title:"No notifications",body:"You're all caught up."})
+      :h("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+        items.map(n=>h("div",{key:n.id,className:"card",style:{
+          padding:"14px 18px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,
+          cursor:"pointer",background:n.is_read?"#fff":"var(--lavender-soft)",
+          borderLeft:"3px solid "+(n.is_read?"transparent":"var(--purple)")
+        },onClick:()=>!n.is_read&&markRead(n.id)},
+          h("div",null,
+            h("div",{style:{fontWeight:n.is_read?500:700,fontSize:14}},n.title||n.message||"Notification"),
+            n.body&&h("div",{style:{fontSize:13,color:"var(--muted)"}}),
+            n.body&&h("div",{style:{fontSize:13,color:"var(--muted)"}},n.body),
+            h("div",{style:{fontSize:12,color:"var(--muted)",marginTop:2}},new Date(n.created_at).toLocaleString("en-IN",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))
+          ),
+          !n.is_read&&h("div",{style:{width:8,height:8,borderRadius:"50%",background:"var(--purple)",flexShrink:0}})
+        ))
+      )
+  );
+}
+
+// ─── SETTINGS ────────────────────────────────────────────────
+function MentorSettingsPage({ mentor, notify }) {
+  const [pw,setPw]=useState({current:"",next:"",confirm:""});
+  const [saving,setSaving]=useState(false);
+  const [notifPrefs,setNotifPrefs]=useState({ booking_request:true, booking_update:true, new_discussion:true, announcements:true });
+  const [loadingPrefs,setLoadingPrefs]=useState(true);
+
+  useEffect(()=>{
+    sb.from("mentor_notification_prefs").select("*").eq("mentor_id",mentor.id).maybeSingle().then(({data})=>{
+      if(data)setNotifPrefs({...notifPrefs,...data});
+      setLoadingPrefs(false);
+    });
+  },[]);
+
+  async function changePassword(e){
+    e.preventDefault();
+    if(pw.next!==pw.confirm){notify("Passwords don't match.","error");return;}
+    if(pw.next.length<8){notify("Password must be at least 8 characters.","error");return;}
+    setSaving(true);
+    const{error}=await sb.auth.updateUser({password:pw.next});
+    setSaving(false);
+    if(error){notify(error.message,"error");return;}
+    notify("Password updated.","ok");setPw({current:"",next:"",confirm:""});
+  }
+
+  async function saveNotifPrefs(){
+    const{error}=await sb.from("mentor_notification_prefs").upsert({mentor_id:mentor.id,...notifPrefs});
+    if(error){notify(error.message,"error");return;}
+    notify("Notification preferences saved.","ok");
+  }
+
+  return h("div",null,
+    h("div",{style:{marginBottom:20}},
+      h("div",{style:{fontSize:22,fontWeight:800}},"Settings"),
+      h("div",{style:{fontSize:13,color:"var(--muted)"}},"Manage your password and notification preferences.")
+    ),
+    h("div",{className:"card",style:{padding:24,maxWidth:480,marginBottom:20}},
+      h("div",{style:{fontWeight:700,fontSize:16,marginBottom:16}},"Change password"),
+      h("form",{onSubmit:changePassword},
+        h(Field,{label:"New password"},h("input",{type:"password",required:true,value:pw.next,onChange:e=>setPw(p=>({...p,next:e.target.value})),placeholder:"Min 8 characters"})),
+        h(Field,{label:"Confirm new password"},h("input",{type:"password",required:true,value:pw.confirm,onChange:e=>setPw(p=>({...p,confirm:e.target.value})),placeholder:"Repeat password"})),
+        h("button",{className:"btn btn-primary",type:"submit",disabled:saving},saving?"Updating…":"Update password")
+      )
+    ),
+    h("div",{className:"card",style:{padding:24,maxWidth:480}},
+      h("div",{style:{fontWeight:700,fontSize:16,marginBottom:16}},"Notification preferences"),
+      loadingPrefs?h("div",{style:{color:"var(--muted)"}},null):
+      h("div",{style:{display:"flex",flexDirection:"column",gap:14}},
+        [
+          {k:"booking_request",label:"New booking requests"},
+          {k:"booking_update",label:"Booking confirmations & cancellations"},
+          {k:"new_discussion",label:"New discussions in my communities"},
+          {k:"announcements",label:"Platform announcements"},
+        ].map(({k,label})=>h("label",{key:k,style:{display:"flex",alignItems:"center",gap:10,fontSize:14,cursor:"pointer"}},
+          h("input",{type:"checkbox",style:{width:16},checked:!!notifPrefs[k],onChange:e=>setNotifPrefs(p=>({...p,[k]:e.target.checked}))}),
+          label
+        )),
+        h("button",{className:"btn btn-primary",style:{alignSelf:"flex-start"},onClick:saveNotifPrefs},"Save preferences")
+      )
+    )
+  );
+}
+
+// ─── APP ROOT ────────────────────────────────────────────────
+function App() {
+  const [session,setSession]   = useState(undefined);
+  const [mentor,setMentor]     = useState(null);
+  const [nav,setNav]           = useState("dashboard");
+  const [toast,setToast]       = useState(null);
+
+  function notify(message, kind="ok") { setToast({ message, kind }); }
+
+  useEffect(() => {
+    sb.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: { subscription } } = sb.auth.onAuthStateChange((_,s) => {
+      setSession(s);
+      if (!s) setMentor(null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!session) return;
+    sb.from("mentors").select("*").eq("id", session.user.id).single().then(({ data, error }) => {
+      if (error || !data) { sb.auth.signOut(); return; }
+      setMentor(data);
+    });
+  }, [session]);
+
+  async function handleLogout() {
+    await sb.auth.signOut();
+  }
+
+  // Waiting for session check
+  if (session === undefined) return h("div", { style:{ display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",fontSize:16,color:"var(--muted)" } }, "Loading…");
+
+  // Not logged in
+  if (!session) return h(AuthPage, { onAuthed:() => {}, notify });
+
+  // Logged in but mentor row not loaded yet
+  if (!mentor) return h("div", { style:{ display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",color:"var(--muted)" } }, "Loading profile…");
+
+  // Status gates
+  if (mentor.status === "pending")   return h(PendingScreen,  { mentor, onLogout:handleLogout });
+  if (mentor.status === "rejected")  return h(RejectedScreen, { mentor, onLogout:handleLogout });
+  if (mentor.status === "suspended") return h(RejectedScreen, { mentor:{ ...mentor, rejection_reason:"Your account has been suspended. Contact support@campus2board.in" }, onLogout:handleLogout });
+
+  const pages = {
+    dashboard:    h(Dashboard,           { mentor, notify }),
+    profile:      h(ProfilePage,         { mentor, onMentorUpdate:setMentor, notify }),
+    availability: h(AvailabilityPage,    { mentor, notify }),
+    bookings:     h(BookingsPage,        { mentor, notify }),
+    sessions:     h(LiveSessionsPage,    { mentor, notify }),
+    courses:      h(CoursesPage,         { mentor, notify }),
+    resources:    h(ResourcesPage,       { mentor, notify }),
+    discussions:  h(DiscussionsPage,     { mentor, notify }),
+    notifications:h(NotificationsPage,   { mentor, notify }),
+    settings:     h(MentorSettingsPage,  { mentor, notify }),
+  };
+
+  return h("div", { style:{ display:"flex" } },
+    h(Sidebar, { active:nav, onNavigate:setNav, mentor, onLogout:handleLogout }),
+    h("div", { style:{ flex:1, padding:32, minHeight:"100vh", overflowY:"auto" } },
+      pages[nav] || pages.dashboard
+    ),
+    toast && h(Toast, { ...toast, onDone:()=>setToast(null) })
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(h(App, null));
+</script>
+</body>
+</html>
