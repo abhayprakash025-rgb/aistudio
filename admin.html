@@ -89,7 +89,15 @@ const h = React.createElement;
 // ============================================================
 const SUPABASE_URL = "https://yhycjpsbuiidboadvchp.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InloeWNqcHNidWlpZGJvYWR2Y2hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMjMxMTUsImV4cCI6MjA5Nzc5OTExNX0.9l639s3cddDx9nHWeAr533yJ996rM4tqSQU8iUrPUWg";
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// storageKey is set explicitly so this app's session is isolated in
+// localStorage from the other Campus2Board apps (Student portal, Mentor
+// communities). Without this, Supabase defaults to a storage key derived
+// only from the project ref, so multiple apps against the same Supabase
+// project silently share (and overwrite) each other's session, causing
+// users to be signed out unexpectedly.
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { storageKey: "sb-campus2board-admin-auth-token" }
+});
 
 // ============================================================
 // SMALL UI HELPERS
