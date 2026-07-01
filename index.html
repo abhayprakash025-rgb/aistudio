@@ -57,7 +57,15 @@ const WORKPLACE_SIMULATION_URL = "https://campus2board-workplace-ai-619074305977
 // Gemini key is NEVER stored client-side. All AI calls route through
 // the Supabase Edge Function /functions/v1/gemini-proxy which holds
 // the key securely server-side. See SETUP NOTES below.
-const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// storageKey is set explicitly so this app's session is isolated in
+// localStorage from other Campus2Board apps (Admin panel, Mentor
+// communities, etc). Without this, Supabase defaults to a storage key
+// derived only from the project ref, so multiple apps against the same
+// Supabase project silently share (and overwrite) each other's session,
+// which was causing users to be signed out immediately after login.
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { storageKey: "sb-campus2board-student-portal-auth-token" }
+});
 
 // ─── Palette ───────────────────────────────────────────────────────────────────
 const C = {
