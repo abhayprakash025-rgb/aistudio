@@ -89,15 +89,7 @@ const h = React.createElement;
 // ============================================================
 const SUPABASE_URL = "https://yhycjpsbuiidboadvchp.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InloeWNqcHNidWlpZGJvYWR2Y2hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMjMxMTUsImV4cCI6MjA5Nzc5OTExNX0.9l639s3cddDx9nHWeAr533yJ996rM4tqSQU8iUrPUWg";
-// storageKey is set explicitly so this app's session is isolated in
-// localStorage from the other Campus2Board apps (Student portal, Mentor
-// communities). Without this, Supabase defaults to a storage key derived
-// only from the project ref, so multiple apps against the same Supabase
-// project silently share (and overwrite) each other's session, causing
-// users to be signed out unexpectedly.
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: { storageKey: "sb-campus2board-admin-auth-token" }
-});
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ============================================================
 // SMALL UI HELPERS
@@ -885,6 +877,24 @@ function MentorsPage({
     setSelected(new Set());
     setLoading(false);
   }
+  async function notifyMentors(ids, decision, reason) {
+    try {
+      const res = await fetch(SUPABASE_URL + "/functions/v1/mentor-decision", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + SUPABASE_ANON_KEY
+        },
+        body: JSON.stringify({ mentor_ids: ids, decision, reason: reason || null })
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        notify("Status updated, but email failed to send: " + (json.error || res.statusText), "error");
+      }
+    } catch (e) {
+      notify("Status updated, but email failed to send: " + e, "error");
+    }
+  }
   async function approve(id) {
     const {
       error
@@ -897,21 +907,24 @@ function MentorsPage({
       return;
     }
     notify("Mentor approved.", "ok");
+    notifyMentors([id], "approved");
     load();
   }
   async function bulkApprove() {
     if (selected.size === 0) return;
+    const ids = Array.from(selected);
     const {
       error
     } = await sb.from("mentors").update({
       status: "approved",
       rejection_reason: null
-    }).in("id", Array.from(selected));
+    }).in("id", ids);
     if (error) {
       notify(error.message, "error");
       return;
     }
     notify(`${selected.size} mentor(s) approved.`, "ok");
+    notifyMentors(ids, "approved");
     load();
   }
   async function reject() {
@@ -926,6 +939,7 @@ function MentorsPage({
       return;
     }
     notify("Mentor rejected.", "ok");
+    notifyMentors([rejectTarget.id], "rejected", rejectReason);
     setRejectTarget(null);
     setRejectReason("");
     load();
